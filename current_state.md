@@ -134,3 +134,35 @@
 **Fixes Applied**:
 - `client/src/App.jsx` (Line 1): Removed unused `BrowserRouter` import to satisfy Vector 2.2 strict compliance.
 - `client/src/pages/auth/LoginPage.jsx` (Line 29): Removed `navigate` from `useEffect` dependency array to satisfy Vector 4.5 strict constraint.
+
+---
+## Week 2 — Day 1: Core Dashboard Workspace Shells
+**Date:** 2026-06-06
+
+### Files Created
+- `client/src/components/shared/DashboardLayout.jsx`
+  — Shared layout wrapper with collapsible sidebar, fixed top navbar, Outlet, AnimatePresence page transition. Sidebar toggle state managed here via useState.
+  
+- `client/src/components/shared/Sidebar.jsx`
+  — Role-aware collapsible sidebar. Reads user.role from Redux. Renders NAV_CONFIG links dynamically with NavLink. Spring-animated width (240px ↔ 64px). Labels fade with AnimatePresence. Tooltips in collapsed mode. Sign Out dispatches logoutUser thunk.
+
+- `client/src/pages/admin/AdminDashboard.jsx`
+  — 4-column stat card grid with Framer Motion count-up animation. Lawyer Workload placeholder. Case Status Summary with 5 color-coded Blueprint badge pills.
+
+- `client/src/pages/lawyer/LawyerDashboard.jsx`
+  — Split 1/3 + 2/3 layout. Left: Today's Schedule with mock hearing cards including pre-argument notes. Right: Color-coded case cards with status badge token, documentsPending indicator, filter tabs.
+
+- `client/src/pages/client/ClientDashboard.jsx`
+  — Hero card with animated entrance, case status badge, hearing countdown chip (pulses if ≤3 days), lawyer note block. 3-col quick links row with hover lift.
+
+### Files Modified
+- `client/src/App.jsx`
+  — DashboardLayout inserted as parent route wrapper for all three role-protected route groups. AdminDashboard, LawyerDashboard, ClientDashboard registered as child routes.
+
+### Constraints Enforced
+- No backend files created or modified
+- No API calls — all data is local mock constants
+- Design tokens applied verbatim from Blueprint §4.3, §4.4, §4.5, §4.6, §4.7
+- Framer Motion used only where Blueprint specifies: stat card hover lift, page transition, sidebar spring collapse, client hearing countdown pulse, hero card entrance
+- Status badge spec (pill + 15% bg opacity + solid text + left border) applied consistently across all three dashboards
+- CommonJS not applicable (frontend-only day)
