@@ -295,3 +295,33 @@
 
 ### API Surface Added
 - POST /api/documents/upload — Authenticated (Admin/Lawyer), multipart/form-data, field: 'document', body: { caseId, description? }
+
+---
+
+## Week 3 — Day 1: Claude API Integration & AI Schema Core
+**Date:** 2026-06-07
+**Status:** Complete
+
+### Files Created
+- `server/models/AIAnalysis.model.js` — Mongoose schema for aianalyses collection. 1:1 case mapping enforced via unique index. Sub-schemas: riskFlagSchema (clause/risk/severity enum), keyDateSchema, analysisEntrySchema (full analysis result), chatMessageSchema (role enum: user/assistant). Root fields: case (unique ObjectId), analyses[], chatHistory[], updatedAt.
+- `server/services/claudeService.js` — Anthropic SDK v2 connector. Module-scoped client init from ANTHROPIC_API_KEY env var. analyzeDocument(): calls claude-sonnet-4-5, system-prompts for strict JSON output, parses and returns structured analysis object. chatWithDocument(): reconstructs full message history array, calls claude-sonnet-4-5, returns assistant response string.
+- `server/routes/ai.routes.js` — POST /analyze route. Chain: verifyToken → checkRole(['lawyer']) → handler. Handler: validates caseId + documentId presence, verifies Case exists, confirms req.user.userId in case.lawyers[], confirms document belongs to case, calls analyzeDocument(), upserts AIAnalysis via findOneAndUpdate with $push, returns 200 with analysis entry.
+
+### Files Modified
+- `server/server.js` — Mounted aiRoutes at /api/ai.
+
+### Architecture Decisions Locked
+- AIAnalysis unique: true on case field — database-level enforcement of 1:1 case-to-analysis document constraint.
+- Lawyer assignment guard uses .toString() comparison on both sides to prevent ObjectId type mismatch false negatives.
+- Claude model string hardcoded to claude-sonnet-4-5 in service layer — not configurable per request.
+- analyzeDocument() system prompt demands strict JSON — no markdown, no prose — to enable safe JSON.parse() without sanitization.
+- Text extraction is a placeholder string in Day 1; real Cloudinary fetch deferred to Day 2 (marked with TODO comment).
+- chatWithDocument() reconstructs full chatHistory on every call — Claude is stateless, context is carried by the caller.
+
+### API Surface Added
+- POST /api/ai/analyze — Authenticated (Lawyer only), JSON body: { caseId, documentId }, returns { message, analysis, aiAnalysisId }
+
+### Pending (Day 2)
+- Replace placeholder text extraction with real Cloudinary PDF/DOCX fetch and text parsing
+- Add POST /api/ai/chat route consuming chatWithDocument() service function
+- Streaming response implementation (SSE or chunked transfer)

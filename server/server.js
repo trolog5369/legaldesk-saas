@@ -26,10 +26,12 @@ const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
 const caseRoutes = require('./routes/case.routes');
 const documentRoutes = require('./routes/document.routes');
+const aiRoutes = require('./routes/ai.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/cases', caseRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/ai', aiRoutes);
 
 const PORT = process.env.PORT;
 
