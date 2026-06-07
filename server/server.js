@@ -36,6 +36,7 @@ const searchRoutes = require('./routes/search.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const expenseRoutes = require('./routes/expense.routes');
 const invoiceRoutes = require('./routes/invoice.routes');
+const appointmentRoutes = require('./routes/appointment.routes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -46,6 +47,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 const PORT = process.env.PORT || 5000;
 
