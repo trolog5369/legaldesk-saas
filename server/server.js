@@ -6,7 +6,11 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 
-connectDB();
+connectDB().then(() => {
+  const { startHearingReminderCron } = require('./jobs/hearingReminder.cron');
+  startHearingReminderCron();
+  console.log('[CRON] Hearing reminder scheduler initialized — 08:00 IST daily');
+});
 
 const app = express();
 
@@ -28,12 +32,14 @@ const caseRoutes = require('./routes/case.routes');
 const documentRoutes = require('./routes/document.routes');
 const aiRoutes = require('./routes/ai.routes');
 const searchRoutes = require('./routes/search.routes');
+const notificationRoutes = require('./routes/notification.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/cases', caseRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 const PORT = process.env.PORT;
 

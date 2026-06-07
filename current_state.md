@@ -403,3 +403,41 @@
 
 ### Next Session
 Week 3, Day 5: Legal News Feed + Notification Bell
+
+---
+
+## Week 3 — Day 5: Legal News Feed, Notification Hub & Automated Cron Reminders
+**Date:** 2026-06-07
+**Status:** ✅ Complete
+
+### Files Created:
+- `server/config/nodemailer.js` — Nodemailer transporter config reading SMTP credentials from environment variables.
+- `server/jobs/hearingReminder.cron.js` — node-cron daily job at 08:00 IST.
+  Queries hearings at T+1, T+3, T+7 intervals. Sends Nodemailer reminder emails
+  to clients. Creates Notification documents. Sets sent-boolean flags atomically.
+- `server/routes/notification.routes.js` — GET / (list with unreadCount) and
+  PATCH /:id/read (ownership-verified mark-read). Full verifyToken protection.
+- `client/src/pages/lawyer/LegalNews.jsx` — Category-filtered news grid.
+  Framer Motion crossfade on tab switch + staggered card entry + hover lift.
+  Skeleton loading, error, and empty states implemented.
+
+### Files Modified:
+- `server/server.js` — Mounted /api/notifications route. Initialized cron job
+  after DB connection with console confirmation log.
+- `client/src/App.jsx` — Registered /lawyer/news route with LegalNews component.
+- `current_state.md` — Week 3 Day 5 log appended.
+
+### Week 3 Summary:
+All 5 days of Week 3 complete. AI Document Analyzer (streaming), Case Chat with
+persistent history, Indian Kanoon Search + Save to Case, Legal News Feed,
+Notification Hub, and Automated Hearing Reminder Cron are all live and integrated.
+
+### Known Constraints:
+- Legal news data depends on /api/news backend route existing and returning
+  items with: { title, snippet, source, publishedAt, category, url } shape.
+  Confirm this contract matches the news controller before frontend integration.
+- Cron job requires node-cron package installed in server/. Verify package.json.
+- Nodemailer transporter config path must match existing codebase convention
+  (config/nodemailer.js or services/emailService.js).
+
+### Next: Week 4 — Billing, Polish & Deployment
