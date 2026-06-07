@@ -325,3 +325,27 @@
 - Replace placeholder text extraction with real Cloudinary PDF/DOCX fetch and text parsing
 - Add POST /api/ai/chat route consuming chatWithDocument() service function
 - Streaming response implementation (SSE or chunked transfer)
+
+---
+
+## Week 3 — Day 2: SSE Streaming Engine & Real-Time AI Analyzer UI
+**Date:** 2026-06-07
+**Status:** Complete
+
+### Files Modified
+- `server/routes/ai.routes.js` — POST /analyze upgraded to SSE. Headers: text/event-stream, no-cache, keep-alive, X-Accel-Buffering: no. flushHeaders() called immediately. anthropic.messages.stream() replaces blocking create(). .on('text') handler appends to fullResponse and emits token SSE frames. .on('finalMessage') handler runs JSON.parse on complete payload, upserts AIAnalysis, emits done frame with analysisEntry, calls res.end(). .on('error') handler emits error frame and ends response. All Day 1 guard logic preserved.
+- `client/src/pages/lawyer/CaseDetail.jsx` — Tab 3 placeholder wiped. Replaced with full streaming consumer UI. State: isAnalyzing, tokenBuffer, analysisResult, analyzeError, selectedDocId, pastAnalyses. Document selector list with radio-style selection. startAnalysis() uses fetch + ReadableStream reader loop (not EventSource) to support POST with auth headers. Live token buffer viewport with JetBrains Mono + Framer Motion pulse indicator. Structured result viewport with Framer Motion reveal animation: Summary panel (blue left border), Risk Flags (expandable rows with AnimatePresence, severity color mapping), Key Parties pills (blue), Key Dates two-column rows, Obligations pills (amber). Error state with retry. Past analyses section (collapsed cards, expand to full view).
+
+### Architecture Decisions Locked
+- fetch() + ReadableStream used over native EventSource — EventSource cannot send POST bodies or Authorization headers.
+- Token accumulation happens both server-side (fullResponse for DB persistence) and client-side (tokenBuffer for live display).
+- JSON.parse() runs exactly once server-side on the complete accumulated string — never per-token.
+- Framer Motion animations applied to final result reveal only — not to the token buffer stream display (raw setState for performance).
+- AnimatePresence used for Risk Flag row expand/collapse — height: 0 → auto transition.
+- Past analyses fetch is scaffolded with TODO comment — GET /api/ai/analyses/:caseId endpoint deferred to Day 3.
+
+### Pending (Day 3)
+- Implement GET /api/ai/analyses/:caseId backend route to serve past analyses
+- Implement POST /api/ai/chat backend route using chatWithDocument() service
+- Build Chat Interface UI component in Tab 3 below the analysis result
+- Wire chatHistory persistence to AIAnalysis.chatHistory array via $push upsert

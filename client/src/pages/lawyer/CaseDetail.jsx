@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
+import { selectAccessToken } from '../../store/slices/authSlice';
 import {
   ArrowLeft,
   MoreHorizontal,
@@ -18,6 +20,9 @@ import {
   Eye,
   EyeOff,
   Trash2,
+  ChevronDown,
+  ChevronRight,
+  XCircle,
 } from 'lucide-react';
 
 // ── Status style map (Blueprint color tokens) ──────────────────────────
@@ -195,7 +200,7 @@ function StatusBadge({ status }) {
 }
 
 // ── Hearing node color logic ───────────────────────────────────────────
-function getHearingNodeColor(dateStr, index, total) {
+function getHearingNodeColor(dateStr, index) {
   const hearingDate = new Date(dateStr);
   const now = new Date();
   if (hearingDate < now) return '#22C55E'; // past — green
@@ -350,7 +355,7 @@ export default function CaseDetail() {
           )}
           {activeTab === 'ai' && (
             <motion.div key="ai" {...panelTransition}>
-              <AITab />
+              <AITab caseId={id} visibleDocs={visibleDocs} />
             </motion.div>
           )}
           {activeTab === 'billing' && (
@@ -448,7 +453,7 @@ function OverviewTab() {
 
             <div className="space-y-4">
               {MOCK_HEARINGS.map((hearing, idx) => {
-                const nodeColor = getHearingNodeColor(hearing.date, idx, MOCK_HEARINGS.length);
+                const nodeColor = getHearingNodeColor(hearing.date, idx);
                 const past = isPastHearing(hearing.date);
 
                 return (
@@ -525,7 +530,7 @@ function MetaRow({ label, children }) {
 // ════════════════════════════════════════════════════════════════════════
 // TAB 2 — DOCUMENTS
 // ════════════════════════════════════════════════════════════════════════
-function DocumentsTab({ documents, visibleDocs, toggleShared, softDelete }) {
+function DocumentsTab({ visibleDocs, toggleShared, softDelete }) {
   return (
     <div className="space-y-4">
       {/* Header row */}
@@ -632,22 +637,595 @@ function DocumentsTab({ documents, visibleDocs, toggleShared, softDelete }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// TAB 3 — AI ANALYSIS (Placeholder)
+// TAB 3 — AI ANALYSIS (Full Streaming Consumer UI)
 // ════════════════════════════════════════════════════════════════════════
-function AITab() {
-  return (
-    <div className="bg-white border border-[#E2E8F0] rounded-xl p-8 flex flex-col items-center justify-center text-center">
-      <Sparkles size={48} className="text-[#1D4ED8] mb-4" />
-      <h2 className="text-[18px] font-semibold text-[#0F172A] mb-2">AI Engine & Chat</h2>
-      <p className="text-[14px] text-[#64748B] max-w-sm mb-6">
-        Document analysis, risk flagging, and case-specific AI chat are coming in Week 3.
-      </p>
-      <button
-        disabled
-        className="inline-flex items-center gap-1.5 bg-[#1D4ED8] text-white text-[14px] font-medium px-4 py-2 rounded-lg opacity-40 cursor-not-allowed"
+function AITab({ caseId, visibleDocs }) {
+  const token = useSelector(selectAccessToken);
+
+  // ── State Shape ────────────────────────────────────────────────────
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [tokenBuffer, setTokenBuffer] = useState('');
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analyzeError, setAnalyzeError] = useState(null);
+  const [selectedDocId, setSelectedDocId] = useState(null);
+  const [pastAnalyses, setPastAnalyses] = useState([]);
+  const [expandedRiskIndices, setExpandedRiskIndices] = useState([]);
+  const [expandedPastIndex, setExpandedPastIndex] = useState(null);
+  const streamViewportRef = useRef(null);
+
+  // ── Fetch past analyses on mount ───────────────────────────────────
+  useEffect(() => {
+    // TODO: implement GET /api/ai/analyses/:caseId on Day 3
+    const fetchPastAnalyses = async () => {
+      try {
+        const res = await fetch(`/api/ai/analyses/${caseId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPastAnalyses(data.analyses || []);
+        }
+      } catch {
+        // Silently catch — endpoint does not exist yet
+      }
+    };
+    fetchPastAnalyses();
+  }, [caseId, token]);
+
+  // ── Auto-scroll stream viewport ────────────────────────────────────
+  useEffect(() => {
+    if (streamViewportRef.current) {
+      streamViewportRef.current.scrollTop = streamViewportRef.current.scrollHeight;
+    }
+  }, [tokenBuffer]);
+
+  // ── startAnalysis() — fetch + ReadableStream SSE consumer ──────────
+  const startAnalysis = async () => {
+    setIsAnalyzing(true);
+    setTokenBuffer('');
+    setAnalysisResult(null);
+    setAnalyzeError(null);
+    setExpandedRiskIndices([]);
+
+    try {
+      const response = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ caseId, documentId: selectedDocId }),
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split('\n\n');
+        // Keep the last potentially incomplete frame in the buffer
+        buffer = frames.pop() || '';
+
+        for (const frame of frames) {
+          const trimmed = frame.trim();
+          if (!trimmed) continue;
+          const jsonStr = trimmed.replace(/^data:\s*/, '');
+          if (!jsonStr) continue;
+
+          try {
+            const payload = JSON.parse(jsonStr);
+
+            if (payload.token) {
+              setTokenBuffer((prev) => prev + payload.token);
+            }
+            if (payload.error) {
+              setAnalyzeError(payload.error);
+              setIsAnalyzing(false);
+              return;
+            }
+            if (payload.done === true) {
+              setAnalysisResult(payload.analysisEntry);
+              setIsAnalyzing(false);
+              return;
+            }
+          } catch {
+            // Skip malformed frames
+          }
+        }
+      }
+    } catch (error) {
+      setAnalyzeError(error.message);
+      setIsAnalyzing(false);
+    }
+  };
+
+  // ── Risk flag toggle ───────────────────────────────────────────────
+  const toggleRiskFlag = (index) => {
+    setExpandedRiskIndices((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+  };
+
+  // ── Severity color mapping ─────────────────────────────────────────
+  const getSeverityStyles = (severity) => {
+    switch (severity) {
+      case 'high':
+        return { bg: 'rgba(239,68,68,0.10)', text: '#EF4444', icon: '#EF4444' };
+      case 'medium':
+        return { bg: 'rgba(245,158,11,0.10)', text: '#F59E0B', icon: '#F59E0B' };
+      case 'low':
+        return { bg: 'rgba(34,197,94,0.10)', text: '#22C55E', icon: '#22C55E' };
+      default:
+        return { bg: 'rgba(107,114,128,0.10)', text: '#6B7280', icon: '#6B7280' };
+    }
+  };
+
+  // ── Render structured result (reused for current + past analyses) ──
+  const renderStructuredResult = (result) => (
+    <>
+      {/* C1 — Summary Panel */}
+      <div
+        style={{
+          borderLeft: '3px solid #1D4ED8',
+          backgroundColor: '#EFF6FF',
+          padding: '16px',
+          borderRadius: '8px',
+          marginBottom: '16px',
+        }}
       >
-        Analyze Document
-      </button>
+        <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748B', display: 'block', marginBottom: '6px' }}>
+          Summary
+        </span>
+        <p style={{ fontSize: '14px', fontWeight: 400, color: '#0F172A', margin: 0, lineHeight: 1.6 }}>
+          {result.summary}
+        </p>
+      </div>
+
+      {/* C2 — Risk Flags Panel */}
+      {result.riskFlags && result.riskFlags.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A', margin: 0 }}>Risk Flags</h4>
+            <span
+              style={{
+                backgroundColor: '#EF4444',
+                color: '#FFFFFF',
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: '9999px',
+              }}
+            >
+              {result.riskFlags.length}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {result.riskFlags.map((flag, idx) => {
+              const severity = getSeverityStyles(flag.severity);
+              const isExpanded = expandedRiskIndices.includes(idx);
+              return (
+                <div key={idx} style={{ backgroundColor: severity.bg, borderRadius: '8px', overflow: 'hidden' }}>
+                  <div
+                    onClick={() => toggleRiskFlag(idx)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 14px',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '50%',
+                        backgroundColor: severity.icon,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span
+                      style={{
+                        flex: 1,
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        color: severity.text,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: isExpanded ? 'normal' : 'nowrap',
+                      }}
+                    >
+                      {flag.clause}
+                    </span>
+                    {isExpanded ? (
+                      <ChevronDown size={14} style={{ color: severity.text, flexShrink: 0 }} />
+                    ) : (
+                      <ChevronRight size={14} style={{ color: severity.text, flexShrink: 0 }} />
+                    )}
+                  </div>
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <div style={{ padding: '0 14px 12px 34px' }}>
+                          <p style={{ fontSize: '13px', color: '#0F172A', margin: 0, lineHeight: 1.5 }}>
+                            {flag.risk}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* C3 — Key Parties Panel */}
+      {result.keyParties && result.keyParties.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A', margin: '0 0 10px 0' }}>Key Parties</h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {result.keyParties.map((party, idx) => (
+              <span
+                key={idx}
+                style={{
+                  backgroundColor: '#EFF6FF',
+                  color: '#1D4ED8',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  padding: '4px 12px',
+                  borderRadius: '9999px',
+                }}
+              >
+                {party}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* C4 — Key Dates Panel */}
+      {result.keyDates && result.keyDates.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A', margin: '0 0 10px 0' }}>Key Dates</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+            {result.keyDates.map((entry, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: '16px',
+                  padding: '8px 0',
+                  borderBottom: idx < result.keyDates.length - 1 ? '1px solid #E2E8F0' : 'none',
+                }}
+              >
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#1D4ED8', flexShrink: 0, minWidth: '120px' }}>
+                  {entry.date}
+                </span>
+                <span style={{ fontSize: '14px', color: '#0F172A' }}>{entry.description}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* C5 — Obligations Panel */}
+      {result.obligations && result.obligations.length > 0 && (
+        <div style={{ marginBottom: '0' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A', margin: '0 0 10px 0' }}>Obligations</h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {result.obligations.map((obligation, idx) => (
+              <span
+                key={idx}
+                style={{
+                  backgroundColor: '#FFFBEB',
+                  color: '#F59E0B',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  padding: '4px 12px',
+                  borderRadius: '9999px',
+                }}
+              >
+                {obligation}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  // ════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ════════════════════════════════════════════════════════════════════
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+      {/* ── Section A — Document Selector ──────────────────────────── */}
+      <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-sm">
+        <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#0F172A', marginBottom: '14px' }}>
+          Analyze a Document
+        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px' }}>
+          {visibleDocs.map((doc) => {
+            const isSelected = selectedDocId === doc._id;
+            const ftConfig = FILE_TYPE_ICONS[doc.fileType] || FILE_TYPE_ICONS.pdf;
+            const FtIcon = ftConfig.icon;
+            return (
+              <div
+                key={doc._id}
+                onClick={() => setSelectedDocId(doc._id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                  borderLeft: isSelected ? '3px solid #1D4ED8' : '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {/* Radio indicator */}
+                <div
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    border: `2px solid ${isSelected ? '#1D4ED8' : '#CBD5E1'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {isSelected && (
+                    <div
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: '#1D4ED8',
+                      }}
+                    />
+                  )}
+                </div>
+                <FtIcon size={18} style={{ color: ftConfig.color, flexShrink: 0 }} />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#0F172A', flex: 1 }}>
+                  {doc.name}
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: '#F1F5F9',
+                    color: '#64748B',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {doc.fileType}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <button
+          onClick={startAnalysis}
+          disabled={!selectedDocId || isAnalyzing}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: !selectedDocId || isAnalyzing ? '#93C5FD' : '#1D4ED8',
+            color: '#FFFFFF',
+            fontSize: '14px',
+            fontWeight: 600,
+            padding: '10px 20px',
+            borderRadius: '8px',
+            border: 'none',
+            cursor: !selectedDocId || isAnalyzing ? 'not-allowed' : 'pointer',
+            transition: 'background-color 0.15s ease',
+          }}
+        >
+          <Sparkles size={16} />
+          {isAnalyzing ? 'Analyzing…' : 'Analyze Document'}
+        </button>
+      </div>
+
+      {/* ── Section B — Live Stream Viewport ───────────────────────── */}
+      {isAnalyzing && (
+        <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm" style={{ position: 'relative' }}>
+          {/* Pulsing indicator */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <motion.div
+              animate={{ opacity: [1, 0, 1] }}
+              transition={{ repeat: Infinity, duration: 1 }}
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#1D4ED8',
+              }}
+            />
+            <span style={{ fontSize: '12px', fontWeight: 500, color: '#1D4ED8' }}>Analyzing…</span>
+          </div>
+
+          <div
+            ref={streamViewportRef}
+            style={{
+              maxHeight: '200px',
+              overflowY: 'auto',
+              padding: '16px',
+              fontFamily: '"JetBrains Mono", monospace',
+              fontSize: '13px',
+              lineHeight: 1.6,
+              whiteSpace: 'pre-wrap',
+              color: '#334155',
+              wordBreak: 'break-word',
+            }}
+          >
+            {tokenBuffer || 'Waiting for response…'}
+          </div>
+        </div>
+      )}
+
+      {/* ── Section C — Structured Result Viewport ─────────────────── */}
+      {analysisResult && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-sm"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <Sparkles size={18} className="text-[#1D4ED8]" />
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#0F172A', margin: 0 }}>Analysis Result</h3>
+          </div>
+          {renderStructuredResult(analysisResult)}
+        </motion.div>
+      )}
+
+      {/* ── Section D — Error State ────────────────────────────────── */}
+      {analyzeError && (
+        <div
+          style={{
+            border: '1px solid #FCA5A5',
+            backgroundColor: '#FEF2F2',
+            borderRadius: '8px',
+            padding: '16px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+          }}
+        >
+          <XCircle size={20} style={{ color: '#EF4444', flexShrink: 0, marginTop: '2px' }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '14px', color: '#991B1B', margin: '0 0 10px 0' }}>{analyzeError}</p>
+            <button
+              onClick={() => {
+                setAnalyzeError(null);
+                setIsAnalyzing(false);
+              }}
+              style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#EF4444',
+                backgroundColor: 'transparent',
+                border: '1px solid #EF4444',
+                borderRadius: '6px',
+                padding: '6px 14px',
+                cursor: 'pointer',
+              }}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Section E — Past Analyses ──────────────────────────────── */}
+      {pastAnalyses.length > 0 && (
+        <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-sm">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#0F172A', margin: 0 }}>Previous Analyses</h3>
+            <span
+              style={{
+                backgroundColor: '#E2E8F0',
+                color: '#475569',
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: '9999px',
+              }}
+            >
+              {pastAnalyses.length}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {pastAnalyses.map((entry, idx) => {
+              const isExpanded = expandedPastIndex === idx;
+              const docName = MOCK_DOCUMENTS.find((d) => d._id === entry.document)?.name || 'Unknown Document';
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    onClick={() => setExpandedPastIndex(isExpanded ? null : idx)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 14px',
+                      cursor: 'pointer',
+                      backgroundColor: isExpanded ? '#F8FAFC' : 'transparent',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <FileText size={16} style={{ color: '#64748B' }} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#0F172A' }}>{docName}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '12px', color: '#94A3B8' }}>
+                        {entry.analyzedAt ? formatDate(entry.analyzedAt) : '—'}
+                      </span>
+                      {isExpanded ? (
+                        <ChevronDown size={14} style={{ color: '#64748B' }} />
+                      ) : (
+                        <ChevronRight size={14} style={{ color: '#64748B' }} />
+                      )}
+                    </div>
+                  </div>
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <div style={{ padding: '0 14px 14px 14px', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
+                          {renderStructuredResult(entry)}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
