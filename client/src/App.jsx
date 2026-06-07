@@ -6,6 +6,7 @@ import DashboardLayout from './components/shared/DashboardLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Cases from './pages/admin/Cases';
 import LawyerDashboard from './pages/lawyer/LawyerDashboard';
+import CaseDetail from './pages/lawyer/CaseDetail';
 import ClientDashboard from './pages/client/ClientDashboard';
 
 function App() {
@@ -32,7 +33,7 @@ function App() {
       <Route element={<ProtectedRoute allowedRoles={["lawyer"]} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/lawyer/dashboard"       element={<LawyerDashboard />} />
-          <Route path="/lawyer/cases/:id"       element={<div>Lawyer Case Detail — Coming Soon</div>} />
+          <Route path="/lawyer/cases/:id"       element={<CaseDetail />} />
           <Route path="/lawyer/calendar"        element={<div>Lawyer Calendar — Coming Soon</div>} />
           <Route path="/lawyer/ai"              element={<div>Lawyer AI Analyzer — Coming Soon</div>} />
           <Route path="/lawyer/search"          element={<div>Indian Kanoon Search — Coming Soon</div>} />

@@ -232,3 +232,43 @@
 - PATCH /api/cases/:id — status update, lawyer reassignment
 - checkCaseAccess middleware wired to :caseId routes
 - CreateCaseModal POST /api/cases live submission replacing console.log
+
+---
+## Week 2 — Day 4: Unified Case Detail Hub & Document Vault
+**Date:** 2026-06-07
+
+### Files Created
+- `client/src/pages/lawyer/CaseDetail.jsx`
+
+### Files Modified
+- `client/src/App.jsx` — registered /lawyer/cases/:id dynamic route under
+  DashboardLayout
+
+### Layout Hooks & Interaction States Built
+- useParams() resolves :id; MOCK_CASE, MOCK_HEARINGS, MOCK_DOCUMENTS defined as
+  top-level consts matching Blueprint schema fields
+- activeTab state drives tab switching across 4 workspaces: overview, documents,
+  ai, billing
+- documents state initialized from MOCK_DOCUMENTS to allow local mutation without
+  touching the source const
+- Case Header Bar: back navigation (useNavigate(-1)), caseNumber in JetBrains Mono,
+  STATUS_STYLES badge map, conditional documentsPending chip
+- Tab bar: TABS config array, active/inactive style resolution, icon + label per tab
+- AnimatePresence + motion.div wrapping each tab panel (opacity/y entrance + exit)
+- Overview Tab: metadata card (9 fields, lawyer chips, Framer Motion hover lift),
+  hearing timeline (past/upcoming/future node color logic, preArgumentNotes italic,
+  outcome rendering)
+- Documents Tab: file-type icon map (pdf/docx/image → color-coded Lucide icons),
+  KB/MB size formatter, isSharedWithClient pill toggle with Eye/EyeOff icons and
+  state mutation, soft-delete via Trash2 with isDeleted flag (no splice), empty
+  state fallback
+- AI Tab: Sparkles placeholder card with disabled preview button
+- Billing Tab: Receipt placeholder card with disabled preview button
+
+### Pending (Next Pass)
+- Wire Overview tab [+ Add Hearing] to a functional AddHearingModal
+- Wire Documents tab [+ Upload Document] to Cloudinary upload flow
+- Replace MOCK_CASE, MOCK_HEARINGS, MOCK_DOCUMENTS with live API fetch via useEffect
+  on :id param
+- AI Analysis tab: Claude streaming integration (Week 3)
+- Billing tab: Expense logger + invoice generation (Week 4)
