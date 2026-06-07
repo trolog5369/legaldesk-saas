@@ -272,3 +272,26 @@
   on :id param
 - AI Analysis tab: Claude streaming integration (Week 3)
 - Billing tab: Expense logger + invoice generation (Week 4)
+
+---
+
+## Week 2 — Day 5: Core Document API & Cloudinary Upload Pipeline
+**Date:** 2026-06-07
+**Status:** Complete
+
+### Files Created
+- `server/config/cloudinary.js` — Cloudinary v2 SDK config client, reads from env vars, exports configured instance.
+- `server/controllers/documentController.js` — `uploadDocument` controller: validates req.file + caseId, verifies case existence via Case.findById(), streams req.file.buffer to Cloudinary via Promise-wrapped upload_stream, derives fileType enum from mimetype, persists Document to MongoDB per Schema 5.4, returns HTTP 201.
+- `server/routes/document.routes.js` — POST /upload route with verifyToken → checkRole(['admin','lawyer']) → multer memoryStorage (10MB limit) → uploadDocument chain.
+
+### Files Modified
+- `server/server.js` — Mounted documentRoutes at /api/documents.
+
+### Architecture Decisions Locked
+- Multer memory storage only. Zero disk writes. Buffer streamed directly to Cloudinary.
+- cloudinary.uploader.upload_stream wrapped in explicit Promise with .end(buffer) call.
+- fileType derived server-side from mimetype — client cannot spoof this field.
+- Admin and Lawyer roles authorized to upload; Client role blocked at checkRole layer.
+
+### API Surface Added
+- POST /api/documents/upload — Authenticated (Admin/Lawyer), multipart/form-data, field: 'document', body: { caseId, description? }
