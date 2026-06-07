@@ -379,3 +379,27 @@
 - Save judgement to case route (POST /api/search/save)
 - AI judgement summarization via claudeService
 - Legal Search page frontend (/lawyer/search)
+
+---
+
+## Week 3 — Day 4: Legal Search Proxy & Judgment Pinning
+**Date:** 2026-06-07
+**Status:** ✅ Complete
+
+### Files Created
+- `server/models/SavedJudgement.model.js` — Mongoose model for case-pinned court precedents. Compound index on {case, savedBy}.
+- `server/routes/search.routes.js` — GET / proxies Indian Kanoon API with lawyer-only guard. POST /save pins judgment to case with Claude AI summary generation.
+- `client/src/pages/lawyer/LegalSearch.jsx` — Full legal research workspace. Two-zone layout, result grid with Framer Motion stagger, per-card pin loading state, case selector integration.
+
+### Files Modified
+- `server/server.js` — Mounted /api/search router.
+- `client/src/App.jsx` — Registered /lawyer/search route.
+
+### Architecture Notes
+- Indian Kanoon API key stored exclusively in server env (INDIAN_KANOON_API_KEY). Never exposed to client.
+- Claude summary generation is wrapped in try/catch — pin operation succeeds even if AI call fails.
+- Duplicate pin prevention: 409 returned if same kanoonUrl already saved to same case.
+- Pin loading state tracked per-card via a Set of docids to allow concurrent UI state without blocking the full results list.
+
+### Next Session
+Week 3, Day 5: Legal News Feed + Notification Bell

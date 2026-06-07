@@ -7,6 +7,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import Cases from './pages/admin/Cases';
 import LawyerDashboard from './pages/lawyer/LawyerDashboard';
 import CaseDetail from './pages/lawyer/CaseDetail';
+import LegalSearch from './pages/lawyer/LegalSearch';
 import ClientDashboard from './pages/client/ClientDashboard';
 
 function App() {
@@ -36,7 +37,7 @@ function App() {
           <Route path="/lawyer/cases/:id"       element={<CaseDetail />} />
           <Route path="/lawyer/calendar"        element={<div>Lawyer Calendar — Coming Soon</div>} />
           <Route path="/lawyer/ai"              element={<div>Lawyer AI Analyzer — Coming Soon</div>} />
-          <Route path="/lawyer/search"          element={<div>Indian Kanoon Search — Coming Soon</div>} />
+          <Route path="/lawyer/search"          element={<LegalSearch />} />
           <Route path="/lawyer/news"            element={<div>Legal News Feed — Coming Soon</div>} />
           <Route path="/lawyer/appointments"    element={<div>Lawyer Appointments — Coming Soon</div>} />
         </Route>

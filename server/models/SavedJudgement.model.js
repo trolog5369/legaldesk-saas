@@ -1,16 +1,17 @@
 const mongoose = require('mongoose');
 
-const SavedJudgementSchema = new mongoose.Schema({
-  case: { type: mongoose.Schema.Types.ObjectId, ref: 'Case' },
-  savedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  title: { type: String },
-  citation: { type: String },
-  court: { type: String },
-  judgmentDate: { type: String },
+const savedJudgementSchema = new mongoose.Schema({
+  case: { type: mongoose.Schema.Types.ObjectId, ref: 'Case', required: true },
+  savedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  title: { type: String, required: true, trim: true },
+  citation: { type: String, trim: true },
+  court: { type: String, trim: true },
+  judgmentDate: { type: String, trim: true },
   summary: { type: String },
-  kanoonUrl: { type: String },
-  tags: [{ type: String }],
-  createdAt: { type: Date, default: Date.now },
-}, { timestamps: false });
+  kanoonUrl: { type: String, trim: true },
+  tags: { type: [String], default: [] },
+}, { timestamps: true, collection: 'savedjudgements' });
 
-module.exports = mongoose.model('SavedJudgement', SavedJudgementSchema);
+savedJudgementSchema.index({ case: 1, savedBy: 1 });
+
+module.exports = mongoose.model('SavedJudgement', savedJudgementSchema);
