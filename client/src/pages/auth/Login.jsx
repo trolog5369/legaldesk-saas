@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
-import Spline from '@splinetool/react-spline';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import Spline from '@splinetool/react-spline';
 import api from '../../services/api';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+
+// TODO: Replace with a valid Spline scene URL in production env
+const SPLINE_SCENE_URL = import.meta.env.VITE_SPLINE_SCENE || '';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -57,7 +60,17 @@ export default function Login() {
     >
       {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#1E293B] relative overflow-hidden items-center justify-center">
-        <Spline scene="SPLINE_SCENE_URL" />
+        {SPLINE_SCENE_URL && (
+          <div className="absolute inset-0 z-0">
+            <Spline scene={SPLINE_SCENE_URL} />
+          </div>
+        )}
+        <div className="relative z-10 flex flex-col items-center justify-center h-full text-white p-8">
+          <h1 className="text-4xl font-bold mb-4 tracking-tight">LegalDesk</h1>
+          <p className="text-slate-400 text-center max-w-sm">
+            Secure, AI-powered management for modern legal practices.
+          </p>
+        </div>
       </div>
 
       {/* Right panel */}
@@ -90,7 +103,7 @@ export default function Login() {
 
             <Button 
               type="submit" 
-              className="w-full bg-[#1D4ED8] hover:bg-blue-800 text-white" 
+              className="w-full bg-[#1D4ED8] hover:bg-[#1E40AF] text-white" 
               disabled={isLoading}
             >
               {isLoading ? (

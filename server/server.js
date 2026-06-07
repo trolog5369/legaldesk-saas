@@ -16,8 +16,9 @@ const app = express();
 
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: ['http://localhost:5173', process.env.CLIENT_URL].filter(Boolean),
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
 }));
 app.use(cookieParser());
 app.use(express.json());
@@ -33,6 +34,7 @@ const documentRoutes = require('./routes/document.routes');
 const aiRoutes = require('./routes/ai.routes');
 const searchRoutes = require('./routes/search.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const expenseRoutes = require('./routes/expense.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/cases', caseRoutes);
@@ -40,6 +42,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 const PORT = process.env.PORT;
 

@@ -140,7 +140,7 @@ const processInterval = async (daysAhead, reminderField) => {
  * Schedule: daily at 08:00 IST (Asia/Kolkata).
  */
 const startHearingReminderCron = () => {
-  const task = cron.schedule('0 8 * * *', async () => {
+  const task = cron.schedule('30 2 * * *', async () => {
     const timestamp = new Date().toISOString();
     console.log(`[CRON] Hearing reminder job started at ${timestamp}`);
 
@@ -154,8 +154,6 @@ const startHearingReminderCron = () => {
     } catch (err) {
       console.error(`[CRON] Hearing reminder job failed: ${err.message}`);
     }
-  }, {
-    timezone: 'Asia/Kolkata',
   });
 
   task.start();

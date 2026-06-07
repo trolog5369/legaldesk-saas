@@ -33,8 +33,12 @@ router.get(
 
       return res.status(200).json(response.data);
     } catch (err) {
-      console.error('Indian Kanoon search proxy error:', err.message);
-      return res.status(502).json({ message: 'Legal search service unavailable' });
+      if (err.response && err.response.status === 401) {
+        console.warn('[Kanoon Proxy] External API auth failure — check INDIAN_KANOON_API_KEY');
+      } else {
+        console.error('Indian Kanoon search proxy error:', err.message);
+      }
+      return res.status(502).json({ message: 'Legal search service temporarily unavailable' });
     }
   }
 );
