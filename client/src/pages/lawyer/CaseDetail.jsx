@@ -8,6 +8,7 @@ import { fetchInvoicesByCase, generateInvoice, getInvoiceDownloadLink } from '..
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { motion, AnimatePresence } from 'framer-motion';
 import { selectAccessToken } from '../../store/slices/authSlice';
+import SkeletonLoader from '../../components/ui/SkeletonLoader';
 import {
   Clock,
   IndianRupee,
@@ -540,6 +541,7 @@ function MetaRow({ label, children }) {
 // TAB 2 — DOCUMENTS
 // ════════════════════════════════════════════════════════════════════════
 function DocumentsTab({ visibleDocs, toggleShared, softDelete }) {
+  const documentStatus = useSelector(state => state.document?.status || 'succeeded');
   return (
     <div className="space-y-4">
       {/* Header row */}
@@ -559,7 +561,7 @@ function DocumentsTab({ visibleDocs, toggleShared, softDelete }) {
 
       {/* Document table */}
       <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden">
-        {visibleDocs.length === 0 ? (
+        {documentStatus === 'loading' ? <SkeletonLoader variant="table" /> : visibleDocs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <FolderOpen size={40} className="text-[#E2E8F0] mb-3" />
             <p className="text-[14px] text-[#94A3B8]">No documents uploaded yet.</p>
@@ -1579,7 +1581,7 @@ function BillingTab() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {expenseStatus === 'loading' ? <SkeletonLoader variant="stat-cards" /> : <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1618,7 +1620,7 @@ function BillingTab() {
           <p className="text-[13px] font-medium text-[#64748B] mb-1">Total Outstanding Balance</p>
           <p className="text-[24px] font-semibold text-[#1D4ED8]">₹ {totalOutstandingBalance.toLocaleString('en-IN')}</p>
         </motion.div>
-      </div>
+      </div>}
 
       {/* Section 2 — Interactive Ledger Table */}
       <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">

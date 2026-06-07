@@ -1,11 +1,9 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarDays, MapPin, User } from 'lucide-react';
-
-const todayHearings = [
-  { caseTitle: 'Sharma vs. State of Maharashtra', court: 'Bombay HC — Court 12', time: '10:30 AM', caseNumber: 'LD-2024-0023', preArgNotes: 'Focus on Section 302 IPC arguments. Cite State vs. Ratan 2019 SC.' },
-  { caseTitle: 'Patel Property Dispute',           court: 'Civil Court Pune — Room 4', time: '2:00 PM',  caseNumber: 'LD-2024-0031', preArgNotes: 'Present survey report Exhibit C. Witness cross-examination first.' },
-];
+import { CalendarDays, MapPin, User, CalendarX2 } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchAppointments } from '../../store/appointmentSlice';
+import SkeletonLoader from '../../components/ui/SkeletonLoader';
 
 const cases = [
   { id: 1, title: 'Sharma vs. State of Maharashtra', caseNumber: 'LD-2024-0023', status: 'urgent',       client: 'Rajesh Sharma',   nextHearing: '2024-12-18', documentsPending: true  },
@@ -16,11 +14,11 @@ const cases = [
 ];
 
 const STATUS_STYLES = {
-  active:       'bg-blue-500/15 text-blue-600 border-blue-500',
-  urgent:       'bg-red-500/15 text-red-600 border-red-500',
-  hearing_soon: 'bg-amber-500/15 text-amber-600 border-amber-500',
-  completed:    'bg-green-500/15 text-green-600 border-green-500',
-  closed:       'bg-gray-500/15 text-gray-600 border-gray-500',
+  active:       'bg-[#EFF6FF] text-[#1D4ED8] border-[#1D4ED8]',
+  urgent:       'bg-[#FEF2F2] text-[#EF4444] border-[#EF4444]',
+  hearing_soon: 'bg-[#FEF3C7] text-[#F59E0B] border-[#F59E0B]',
+  completed:    'bg-[#F0FDF4] text-[#22C55E] border-[#22C55E]',
+  closed:       'bg-[#F3F4F6] text-[#6B7280] border-[#6B7280]',
 };
 
 const STATUS_LABELS = {
@@ -31,8 +29,25 @@ const STATUS_LABELS = {
   closed: 'Closed',
 };
 
+const TYPE_COLORS = {
+  court_appearance: { bg: '#FEE2E2', text: '#991B1B' },
+  client_meeting: { bg: '#DBEAFE', text: '#1E40AF' },
+  document_review: { bg: '#EDE9FE', text: '#5B21B6' },
+  other: { bg: '#F1F5F9', text: '#475569' }
+};
+
 export default function LawyerDashboard() {
+  const dispatch = useDispatch();
   const [selectedFilter, setSelectedFilter] = useState('all');
+  
+  const { items: appointments, status: apptStatus } = useSelector(state => state.appointment);
+  const caseStatus = useSelector(state => state.case?.status || 'succeeded');
+
+  useEffect(() => {
+    if (apptStatus === 'idle') {
+      dispatch(fetchAppointments());
+    }
+  }, [dispatch, apptStatus]);
 
   const visibleCases = selectedFilter === 'all' ? cases : cases.filter(c => c.status === selectedFilter);
 
@@ -40,66 +55,78 @@ export default function LawyerDashboard() {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  
+  const upcomingEvents = [...appointments]
+    .filter(a => new Date(a.start) >= today && a.status === 'scheduled')
+    .sort((a, b) => new Date(a.start) - new Date(b.start))
+    .slice(0, 5);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#0F172A]">My Dashboard</h1>
-        <p className="text-sm text-[#64748B] mt-1">Today is {formattedDate}. You have {todayHearings.length} hearings scheduled.</p>
+        <p className="text-sm text-[#64748B] mt-1">Today is {formattedDate}.</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        {/* Left Panel — Today's Schedule */}
-        <div className="col-span-1 bg-white border border-[#E2E8F0] rounded-xl p-5 h-fit">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Panel — Upcoming Appointments / Hearings List Widget */}
+        <div className="col-span-1 bg-white border border-[#E2E8F0] rounded-xl p-5 h-fit shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <CalendarDays size={16} className="text-[#1D4ED8]" />
-            <h2 className="text-lg font-semibold text-[#0F172A]">Today's Schedule</h2>
+            <CalendarDays size={18} className="text-[#1D4ED8]" />
+            <h2 className="text-[16px] font-semibold text-[#0F172A]">Upcoming Events</h2>
           </div>
 
           <div className="space-y-0">
-            {todayHearings.length === 0 ? (
-              <div className="text-sm text-[#94A3B8] py-6 text-center">No hearings scheduled for today.</div>
+            {apptStatus === 'loading' ? (
+              <SkeletonLoader variant="list" />
+            ) : upcomingEvents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <CalendarX2 size={40} className="text-[#94A3B8] mb-3" />
+                <p className="text-[13px] text-[#64748B]">No upcoming events</p>
+              </div>
             ) : (
-              todayHearings.map((hearing, idx) => (
-                <div key={idx}>
-                  <div className="flex py-4">
-                    <div className="w-1 rounded-full bg-[#1D4ED8] mr-3 self-stretch shrink-0" />
-                    <div className="flex-1">
-                      <div className="mb-1">
-                        <span className="text-xs font-semibold text-[#1D4ED8] bg-[#EFF6FF] px-2 py-0.5 rounded inline-block mb-1">
-                          {hearing.time}
-                        </span>
-                        <h3 className="text-sm font-semibold text-[#0F172A]">{hearing.caseTitle}</h3>
-                        <p className="font-mono text-xs text-[#94A3B8] mt-0.5">{hearing.caseNumber}</p>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-[#64748B] mt-1.5">
-                        <MapPin size={12} />
-                        <span>{hearing.court}</span>
-                      </div>
-                      {hearing.preArgNotes && (
-                        <div className="mt-2">
-                          <div className="text-[10px] uppercase tracking-widest text-[#94A3B8]">Pre-Argument Notes</div>
-                          <div className="text-xs text-[#64748B] italic mt-0.5">{hearing.preArgNotes}</div>
-                        </div>
+              upcomingEvents.map((event, idx) => {
+                const isCourt = event.type === 'court_appearance';
+                const dotColor = isCourt ? '#3B82F6' : '#22C55E';
+                return (
+                  <div key={event._id} className="relative flex py-3">
+                    <div className="flex flex-col items-center mr-3 relative shrink-0 w-4">
+                      <div className="w-2.5 h-2.5 rounded-full z-10" style={{ backgroundColor: dotColor, marginTop: '6px' }} />
+                      {idx < upcomingEvents.length - 1 && (
+                        <div className="absolute top-[16px] bottom-[-16px] w-[2px] bg-[#E2E8F0]" />
                       )}
                     </div>
+                    <div className="flex-1">
+                      <h3 className="text-[14px] font-semibold text-[#0F172A] mb-0.5">{event.title}</h3>
+                      <div className="text-[12px] text-[#64748B] mb-2">
+                        {new Date(event.start).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' })} · {new Date(event.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <span 
+                        className="px-2 py-0.5 rounded text-[11px] font-medium inline-block"
+                        style={{ backgroundColor: TYPE_COLORS[event.type]?.bg, color: TYPE_COLORS[event.type]?.text }}
+                      >
+                        {event.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                    </div>
                   </div>
-                  {idx < todayHearings.length - 1 && <div className="border-t border-[#E2E8F0]" />}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
 
         {/* Right Panel — Case Cards */}
-        <div className="col-span-2 space-y-4">
+        <div className="col-span-1 lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-[#0F172A]">My Cases</h2>
+            <h2 className="text-[16px] font-semibold text-[#0F172A]">My Cases</h2>
             <div className="flex gap-2">
               {['all', 'active', 'urgent', 'hearing_soon'].map(filter => (
                 <button
                   key={filter}
                   onClick={() => setSelectedFilter(filter)}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                  className={`px-3 py-1.5 text-[12px] font-medium rounded-full transition-colors ${
                     selectedFilter === filter
                       ? 'bg-[#1D4ED8] text-white'
                       : 'bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]'
@@ -111,50 +138,52 @@ export default function LawyerDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {visibleCases.map(c => (
-              <motion.div
-                key={c.id}
-                whileHover={{ y: -3, boxShadow: '0 8px 30px rgba(0,0,0,0.10)' }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                className="bg-white border border-[#E2E8F0] rounded-xl p-4 relative overflow-hidden cursor-pointer"
-              >
-                {c.documentsPending && (
-                  <div className="flex items-center gap-1 absolute top-3 right-3">
-                    <div className="w-2 h-2 rounded-full bg-red-500" />
-                    <span className="text-[10px] text-red-500 font-medium">Docs Pending</span>
-                  </div>
-                )}
-                
-                <div className="flex items-start justify-between mb-2 mt-1">
-                  <h3 className="text-sm font-semibold text-[#0F172A] flex-1 pr-12">{c.title}</h3>
-                </div>
-
-                <div className="mb-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold border-l-4 ${STATUS_STYLES[c.status]}`}>
-                    {STATUS_LABELS[c.status]}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs text-[#94A3B8]">{c.caseNumber}</span>
-                    <div className="flex items-center gap-1 text-xs text-[#64748B]">
-                      <User size={12} />
-                      {c.client}
-                    </div>
-                  </div>
-
-                  {c.nextHearing && (
-                    <div className="flex items-center gap-1 text-xs text-[#64748B] pt-1">
-                      <CalendarDays size={12} />
-                      {new Date(c.nextHearing).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {caseStatus === 'loading' ? (
+            <SkeletonLoader variant="case-cards" />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {visibleCases.map(c => (
+                <motion.div
+                  key={c.id}
+                  whileHover={{ y: -3, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="bg-white border border-[#E2E8F0] rounded-xl p-4 relative overflow-hidden cursor-pointer"
+                >
+                  {c.documentsPending && (
+                    <div className="flex items-center gap-1.5 absolute top-4 right-4 bg-[#FEF2F2] px-2 py-1 rounded border border-[#EF4444]">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#EF4444]" />
+                      <span className="text-[10px] text-[#EF4444] font-semibold">Docs Pending</span>
                     </div>
                   )}
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  
+                  <h3 className="text-[14px] font-semibold text-[#0F172A] pr-20 mb-3">{c.title}</h3>
+
+                  <div className="mb-4">
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold border-l-[3px] ${STATUS_STYLES[c.status]}`}>
+                      {STATUS_LABELS[c.status]}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 mt-auto">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[12px] text-[#94A3B8] font-medium">{c.caseNumber}</span>
+                      <div className="flex items-center gap-1.5 text-[12px] text-[#64748B]">
+                        <User size={13} />
+                        {c.client}
+                      </div>
+                    </div>
+
+                    {c.nextHearing && (
+                      <div className="flex items-center gap-1.5 text-[12px] text-[#64748B] pt-0.5">
+                        <CalendarDays size={13} />
+                        {new Date(c.nextHearing).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

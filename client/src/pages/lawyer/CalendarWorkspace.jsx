@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, CalendarX, X, AlertTriangle, Loader2 } from 'lucide-react';
 import { fetchAppointments, createAppointment, cancelAppointment } from '../../store/appointmentSlice';
+import SkeletonLoader from '../../components/ui/SkeletonLoader';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 
 const TYPE_COLORS = {
@@ -215,11 +216,7 @@ export default function CalendarWorkspace() {
         </div>
 
         {status === 'loading' ? (
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: 42 }).map((_, i) => (
-              <div key={i} className="min-h-[80px] bg-gray-100 animate-pulse rounded-md"></div>
-            ))}
-          </div>
+          <SkeletonLoader variant="calendar" />
         ) : (
           <div className="overflow-hidden relative">
             <AnimatePresence mode="wait">
@@ -285,9 +282,7 @@ export default function CalendarWorkspace() {
         <h2 className="text-[16px] font-semibold text-[#0F172A] mb-4">Upcoming</h2>
         
         {status === 'loading' ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="animate-spin text-[#94A3B8]" size={24} />
-          </div>
+          <SkeletonLoader variant="list" />
         ) : upcomingAppointments.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-10">
             <CalendarX size={36} className="text-[#94A3B8] mb-3" />

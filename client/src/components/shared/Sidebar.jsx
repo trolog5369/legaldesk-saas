@@ -1,148 +1,192 @@
+import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  LayoutDashboard, Briefcase, Users, UserCheck, Receipt,
-  CalendarDays, BrainCircuit, Search, Newspaper, Clock,
-  FileText, Bell, LogOut
+import { 
+  Scale, ChevronLeft, ChevronRight, LayoutDashboard, Briefcase, 
+  Users, UserCheck, Receipt, CalendarDays, Sparkles, Search, 
+  Newspaper, Clock, FileText, Bell, LogOut 
 } from 'lucide-react';
-import { logoutUser, selectUser } from '../../store/slices/authSlice';
+import { toggleSidebar } from '../../store/uiSlice';
+import { logoutUser as logout } from '../../store/slices/authSlice';
 
 const NAV_CONFIG = {
   admin: [
-    { label: 'Dashboard',   icon: LayoutDashboard,  path: '/admin/dashboard' },
-    { label: 'Cases',       icon: Briefcase,        path: '/admin/cases' },
-    { label: 'Clients',     icon: Users,            path: '/admin/clients' },
-    { label: 'Staff',       icon: UserCheck,        path: '/admin/staff' },
-    { label: 'Billing',     icon: Receipt,          path: '/admin/billing' },
+    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/admin/cases', label: 'Cases', icon: Briefcase },
+    { path: '/admin/clients', label: 'Clients', icon: Users },
+    { path: '/admin/staff', label: 'Staff', icon: UserCheck },
+    { path: '/admin/billing', label: 'Billing', icon: Receipt },
   ],
   lawyer: [
-    { label: 'Dashboard',   icon: LayoutDashboard,  path: '/lawyer/dashboard' },
-    { label: 'My Cases',    icon: Briefcase,        path: '/lawyer/cases' },
-    { label: 'Calendar',    icon: CalendarDays,     path: '/lawyer/calendar' },
-    { label: 'AI Analyzer', icon: BrainCircuit,     path: '/lawyer/ai' },
-    { label: 'Search',      icon: Search,           path: '/lawyer/search' },
-    { label: 'News',        icon: Newspaper,        path: '/lawyer/news' },
-    { label: 'Appointments',icon: Clock,            path: '/lawyer/appointments' },
+    { path: '/lawyer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/lawyer/cases', label: 'My Cases', icon: Briefcase },
+    { path: '/lawyer/calendar', label: 'Calendar', icon: CalendarDays },
+    { path: '/lawyer/ai', label: 'AI Tools', icon: Sparkles },
+    { path: '/lawyer/search', label: 'Search', icon: Search },
+    { path: '/lawyer/news', label: 'News', icon: Newspaper },
+    { path: '/lawyer/appointments', label: 'Appointments', icon: Clock },
   ],
   client: [
-    { label: 'Dashboard',      icon: LayoutDashboard, path: '/client/dashboard' },
-    { label: 'My Cases',       icon: Briefcase,       path: '/client/cases' },
-    { label: 'Documents',      icon: FileText,        path: '/client/documents' },
-    { label: 'Appointments',   icon: CalendarDays,    path: '/client/appointments' },
-    { label: 'Notifications',  icon: Bell,            path: '/client/notifications' },
+    { path: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/client/cases', label: 'My Cases', icon: Briefcase },
+    { path: '/client/documents', label: 'Documents', icon: FileText },
+    { path: '/client/appointments', label: 'Appointments', icon: CalendarDays },
+    { path: '/client/notifications', label: 'Notifications', icon: Bell },
   ]
 };
 
-const Tooltip = ({ children, label, disabled }) => {
-  if (disabled) return <>{children}</>;
-  return (
-    <div className="group relative flex items-center w-full">
-      {children}
-      <div className="absolute left-full ml-2 opacity-0 group-hover:opacity-100 transition-opacity bg-[#0F172A] text-white text-xs rounded py-1.5 px-2.5 pointer-events-none whitespace-nowrap z-50 shadow-lg border border-[#334155]">
-        {label}
-      </div>
-    </div>
-  );
+const ROLE_BADGES = {
+  admin: { bg: '#7C3AED' },
+  lawyer: { bg: '#1D4ED8' },
+  client: { bg: '#0F766E' }
 };
 
-export default function Sidebar({ isOpen }) {
-  const user = useSelector(selectUser);
+export default function Sidebar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  const navItems = NAV_CONFIG[user?.role] ?? [];
+  const isOpen = useSelector(state => state.ui.sidebarOpen);
+  const user = useSelector(state => state.auth.user);
+  
+  const role = user?.role || 'client';
+  const navItems = NAV_CONFIG[role] || NAV_CONFIG.client;
 
   const handleLogout = () => {
-    dispatch(logoutUser());
+    dispatch(logout());
     navigate('/login');
   };
 
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name.charAt(0).toUpperCase();
+  };
+
   return (
-    <motion.aside
+    <motion.div
+      initial={false}
       animate={{ width: isOpen ? 240 : 64 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="bg-[#1E293B] h-full flex flex-col overflow-hidden shrink-0"
+      className="h-screen bg-[#1E293B] shrink-0 flex flex-col relative z-20"
+      style={{ boxShadow: '2px 0 8px rgba(0,0,0,0.15)' }}
     >
-      <div className="h-16 flex items-center px-5 shrink-0 border-b border-[#334155]/50">
-        {isOpen ? (
-          <AnimatePresence mode="wait">
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="text-white font-bold text-lg whitespace-nowrap pl-2"
-            >
-              LegalDesk
-            </motion.span>
+      {/* Header / Logo */}
+      <div className="h-16 flex items-center px-4 relative shrink-0">
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="w-8 flex justify-center shrink-0">
+            <Scale size={20} color="#1D4ED8" />
+          </div>
+          <AnimatePresence>
+            {isOpen && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="text-white text-[18px] font-bold whitespace-nowrap"
+              >
+                LegalDesk
+              </motion.span>
+            )}
           </AnimatePresence>
-        ) : (
-          <span className="text-white font-bold text-lg mx-auto">LD</span>
-        )}
+        </div>
+        
+        <button
+          onClick={() => dispatch(toggleSidebar())}
+          className={`absolute ${isOpen ? 'right-4' : 'left-1/2 -translate-x-1/2'} top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#334155] hover:bg-[#475569] flex items-center justify-center transition-colors z-10`}
+        >
+          {isOpen ? <ChevronLeft size={16} color="white" /> : <ChevronRight size={16} color="white" />}
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-1 overflow-x-hidden w-full">
+      {/* Navigation */}
+      <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-1 px-3 custom-scrollbar">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.path} className="px-2 w-full">
-              <Tooltip label={item.label} disabled={isOpen}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#1D4ED8] text-white text-[13px] font-medium transition-all w-full'
-                      : 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#94A3B8] hover:bg-[#334155] hover:text-white text-[13px] font-medium transition-all w-full'
-                  }
-                >
-                  <div className="shrink-0 flex items-center justify-center">
-                    <Icon size={20} strokeWidth={1.75} />
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) => `
+                relative flex items-center rounded-md h-10 transition-colors group
+                ${isActive ? 'bg-[#1D4ED8] text-white' : 'text-[#94A3B8] hover:bg-[#334155] hover:text-[#CBD5E1]'}
+                ${isOpen ? 'px-3' : 'justify-center'}
+              `}
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#60A5FA] rounded-l-md" />
+                  )}
+                  <div className={`flex justify-center ${isOpen ? 'mr-3' : ''}`}>
+                    <Icon size={20} />
                   </div>
                   <AnimatePresence>
                     {isOpen && (
                       <motion.span
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: 'auto' }}
-                        exit={{ opacity: 0, width: 0 }}
-                        className="overflow-hidden whitespace-nowrap"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="text-[13px] font-medium truncate"
                       >
                         {item.label}
                       </motion.span>
                     )}
                   </AnimatePresence>
-                </NavLink>
-              </Tooltip>
-            </div>
+                  
+                  {!isOpen && (
+                    <div className="absolute left-full ml-4 px-2 py-1 bg-white text-[#0F172A] text-[12px] font-medium rounded shadow-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 pointer-events-none">
+                      {item.label}
+                    </div>
+                  )}
+                </>
+              )}
+            </NavLink>
           );
         })}
       </div>
 
-      <div className="mt-auto pb-4 w-full px-2">
-        <div className="border-t border-[#334155] mx-2 mb-2" />
-        <Tooltip label="Sign Out" disabled={isOpen}>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#94A3B8] hover:bg-[#334155] hover:text-red-400 text-[13px] font-medium transition-all w-full"
-          >
-            <div className="shrink-0 flex items-center justify-center">
-              <LogOut size={20} strokeWidth={1.75} />
+      {/* User Info Block */}
+      <div className="p-4 border-t border-[#334155] shrink-0">
+        <div className={`flex items-center ${isOpen ? 'justify-between' : 'justify-center'}`}>
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-[#334155] text-white flex items-center justify-center text-[14px] font-bold shrink-0">
+              {getInitials(user?.name)}
             </div>
+            
             <AnimatePresence>
               {isOpen && (
-                <motion.span
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 'auto' }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="overflow-hidden whitespace-nowrap"
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex flex-col overflow-hidden"
                 >
-                  Sign Out
-                </motion.span>
+                  <span className="text-[13px] font-semibold text-white truncate w-24">
+                    {user?.name || 'User'}
+                  </span>
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider text-white px-1.5 py-0.5 rounded-full inline-flex w-max mt-0.5"
+                    style={{ backgroundColor: ROLE_BADGES[role]?.bg }}
+                  >
+                    {role}
+                  </span>
+                </motion.div>
               )}
             </AnimatePresence>
-          </button>
-        </Tooltip>
+          </div>
+          
+          {isOpen && (
+            <button 
+              onClick={handleLogout}
+              className="text-[#94A3B8] hover:text-[#EF4444] transition-colors p-1"
+            >
+              <LogOut size={16} />
+            </button>
+          )}
+        </div>
       </div>
-    </motion.aside>
+    </motion.div>
   );
 }

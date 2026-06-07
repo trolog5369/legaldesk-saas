@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { Briefcase, FileText, CalendarDays, Zap, Scale } from 'lucide-react';
 import { selectUser } from '../../store/slices/authSlice';
+import SkeletonLoader from '../../components/ui/SkeletonLoader';
 
 const heroCase = {
   title: 'Desai Property Dispute',
@@ -39,6 +40,7 @@ const STATUS_LABELS = {
 export default function ClientDashboard() {
   const user = useSelector(selectUser);
   const navigate = useNavigate();
+  const caseStatus = useSelector(state => state.case?.status || 'succeeded');
 
   const daysUntilHearing = Math.ceil((new Date(heroCase.nextHearing) - new Date()) / (1000 * 60 * 60 * 24));
 
@@ -49,64 +51,68 @@ export default function ClientDashboard() {
         <p className="text-sm text-[#94A3B8] mt-1">Here's the latest on your case.</p>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm"
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-[#0F172A]">{heroCase.title}</h2>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="font-mono text-xs text-[#94A3B8]">{heroCase.caseNumber}</span>
-              <span className="text-xs bg-[#EFF6FF] text-[#1D4ED8] px-2 py-0.5 rounded font-medium">{heroCase.type}</span>
-            </div>
-          </div>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold border-l-4 ${STATUS_STYLES[heroCase.status]}`}>
-            {STATUS_LABELS[heroCase.status]}
-          </span>
-        </div>
-
-        <div className="border-t border-[#E2E8F0] my-4" />
-
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-[#94A3B8] mb-1">NEXT HEARING</div>
-          <div className="flex items-end gap-3">
-            <div className="text-2xl font-bold text-[#0F172A]">
-              {new Date(heroCase.nextHearing).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </div>
-            {daysUntilHearing <= 3 ? (
-              <motion.div
-                animate={{ scale: [1, 1.04, 1] }}
-                transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
-                className="bg-amber-500/15 text-amber-700 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1 mb-1"
-              >
-                <Zap size={12} />
-                In {daysUntilHearing} days
-              </motion.div>
-            ) : (
-              <div className="bg-blue-500/15 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1 mb-1">
-                <CalendarDays size={12} />
-                In {daysUntilHearing} days
+      {caseStatus === 'loading' ? (
+        <SkeletonLoader variant="single-card" />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm"
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-[#0F172A]">{heroCase.title}</h2>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="font-mono text-xs text-[#94A3B8]">{heroCase.caseNumber}</span>
+                <span className="text-xs bg-[#EFF6FF] text-[#1D4ED8] px-2 py-0.5 rounded font-medium">{heroCase.type}</span>
               </div>
-            )}
+            </div>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold border-l-4 ${STATUS_STYLES[heroCase.status]}`}>
+              {STATUS_LABELS[heroCase.status]}
+            </span>
           </div>
-        </div>
 
-        <div className="border-t border-[#E2E8F0] my-4" />
+          <div className="border-t border-[#E2E8F0] my-4" />
 
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-[#94A3B8]">MESSAGE FROM YOUR LAWYER</div>
-          <div className="bg-[#F8FAFC] border-l-4 border-[#1D4ED8] rounded-r-lg p-3 mt-1">
-            <div className="text-sm text-[#0F172A] italic">{heroCase.lawyerNote}</div>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-[#94A3B8] mb-1">NEXT HEARING</div>
+            <div className="flex items-end gap-3">
+              <div className="text-2xl font-bold text-[#0F172A]">
+                {new Date(heroCase.nextHearing).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </div>
+              {daysUntilHearing <= 3 ? (
+                <motion.div
+                  animate={{ scale: [1, 1.04, 1] }}
+                  transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
+                  className="bg-amber-500/15 text-amber-700 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1 mb-1"
+                >
+                  <Zap size={12} />
+                  In {daysUntilHearing} days
+                </motion.div>
+              ) : (
+                <div className="bg-blue-500/15 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1 mb-1">
+                  <CalendarDays size={12} />
+                  In {daysUntilHearing} days
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1 text-xs text-[#64748B] mt-3">
-            <Scale size={12} className="text-[#1D4ED8]" />
-            Handled by: {heroCase.assignedLawyers.join(', ')}
+
+          <div className="border-t border-[#E2E8F0] my-4" />
+
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-[#94A3B8]">MESSAGE FROM YOUR LAWYER</div>
+            <div className="bg-[#F8FAFC] border-l-4 border-[#1D4ED8] rounded-r-lg p-3 mt-1">
+              <div className="text-sm text-[#0F172A] italic">{heroCase.lawyerNote}</div>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-[#64748B] mt-3">
+              <Scale size={12} className="text-[#1D4ED8]" />
+              Handled by: {heroCase.assignedLawyers.join(', ')}
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         {quickLinks.map((link, idx) => {

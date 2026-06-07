@@ -4,6 +4,7 @@ import { Scale, BookOpen, ExternalLink, Loader2, Search, CheckCircle, AlertCircl
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import SkeletonLoader from '../../components/ui/SkeletonLoader';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import api from '../../services/api';
 
@@ -225,131 +226,8 @@ export default function LegalSearch() {
 
         {/* LOADING STATE */}
         {isSearching && (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="bg-white border border-[#E2E8F0] rounded-lg p-5 space-y-3 animate-pulse">
-                <div className="flex items-center justify-between">
-                  <div className="h-5 w-24 bg-[#E2E8F0] rounded-full" />
-                  <div className="h-4 w-20 bg-[#F1F5F9] rounded" />
-                </div>
-                <div className="h-5 w-3/4 bg-[#E2E8F0] rounded" />
-                <div className="h-4 w-1/2 bg-[#EFF6FF] rounded" />
-                <div className="space-y-1.5">
-                  <div className="h-3 w-full bg-[#F1F5F9] rounded" />
-                  <div className="h-3 w-5/6 bg-[#F1F5F9] rounded" />
-                  <div className="h-3 w-2/3 bg-[#F1F5F9] rounded" />
-                </div>
-                <div className="flex items-center justify-between pt-2">
-                  <div className="h-8 w-8 bg-[#F1F5F9] rounded" />
-                  <div className="h-8 w-28 bg-[#E2E8F0] rounded-lg" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ERROR STATE */}
-        {searchError && !isSearching && (
-          <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-lg p-4 mt-2">
-            <AlertCircle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-red-700">{searchError}</p>
-            </div>
-          </div>
-        )}
-
-        {/* RESULTS STATE */}
-        {!isSearching && !searchError && results.length > 0 && (
-          <div>
-            <p className="text-sm text-[#64748B] mb-4">
-              Found {results.length} result{results.length !== 1 ? 's' : ''}
-            </p>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {results.map((doc, index) => {
-                const isPinned = pinnedIds.has(doc.tid);
-                const isPinning = pinningIds.has(doc.tid);
-                const snippet = stripHtml(doc.headline || '');
-
-                return (
-                  <motion.div
-                    key={doc.tid || index}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.06 }}
-                    className="bg-white border border-[#E2E8F0] rounded-lg p-5 flex flex-col"
-                  >
-                    {/* Top row: court + date */}
-                    <div className="flex items-center justify-between mb-2.5">
-                      <Badge variant="outline" className="text-[11px]">
-                        {doc.docsource || 'Court'}
-                      </Badge>
-                      {doc.publishdate && (
-                        <span className="text-xs text-[#94A3B8]">{doc.publishdate}</span>
-                      )}
-                    </div>
-
-                    {/* Title */}
-                    <h3
-                      className="text-[15px] font-semibold text-[#0F172A] leading-snug mb-1.5 line-clamp-2"
-                      title={stripHtml(doc.title || '')}
-                    >
-                      {stripHtml(doc.title || 'Untitled')}
-                    </h3>
-
-                    {/* Citation */}
-                    {doc.citation && (
-                      <p className="text-[13px] text-[#3B82F6] font-mono mb-1.5">
-                        {doc.citation}
-                      </p>
-                    )}
-
-                    {/* Snippet */}
-                    {snippet && (
-                      <p className="text-[13px] text-[#64748B] leading-relaxed line-clamp-3 mb-4 flex-1">
-                        {snippet}
-                      </p>
-                    )}
-
-                    {/* Action row */}
-                    <div className="flex items-center justify-between pt-2 border-t border-[#F1F5F9] mt-auto">
-                      <a
-                        href={`https://indiankanoon.org/doc/${doc.tid}/`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 rounded-md text-[#64748B] hover:text-[#1D4ED8] hover:bg-[#EFF6FF] transition-colors"
-                        title="Open on Indian Kanoon"
-                      >
-                        <ExternalLink size={16} />
-                      </a>
-
-                      {isPinned ? (
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 px-3 py-1.5">
-                          <CheckCircle size={15} />
-                          Pinned ✓
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => handlePin(doc)}
-                          disabled={!selectedCaseId || isPinning}
-                          title={!selectedCaseId ? 'Select a case first' : 'Pin to selected case'}
-                          className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg transition-all ${
-                            !selectedCaseId
-                              ? 'text-[#94A3B8] bg-[#F1F5F9] cursor-not-allowed opacity-60'
-                              : 'text-[#1D4ED8] bg-[#EFF6FF] hover:bg-[#DBEAFE] active:scale-[0.98]'
-                          } disabled:pointer-events-none disabled:opacity-50`}
-                        >
-                          {isPinning ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <BookmarkPlus size={14} />
-                          )}
-                          {isPinning ? 'Pinning...' : 'Pin to Case'}
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
+          <SkeletonLoader variant="list" />
+        )}}
             </div>
           </div>
         )}

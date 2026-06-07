@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import Login from './pages/auth/Login';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -11,55 +12,60 @@ import LegalSearch from './pages/lawyer/LegalSearch';
 import LegalNews from './pages/lawyer/LegalNews';
 import CalendarWorkspace from './pages/lawyer/CalendarWorkspace';
 import ClientDashboard from './pages/client/ClientDashboard';
+import PageTransitionWrapper from './components/layout/PageTransitionWrapper';
 
 function App() {
+  const location = useLocation();
+
   return (
-    <Routes>
-      {/* PUBLIC */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<RegisterPage />} />
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* PUBLIC */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<PageTransitionWrapper><Login /></PageTransitionWrapper>} />
+        <Route path="/register" element={<PageTransitionWrapper><RegisterPage /></PageTransitionWrapper>} />
 
-      {/* ADMIN PROTECTED GROUP */}
-      <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-        <Route element={<DashboardLayout />}>
-          <Route path="/admin/dashboard"   element={<AdminDashboard />} />
-          <Route path="/admin/cases"       element={<Cases />} />
-          <Route path="/admin/cases/:id"   element={<div>Admin Case Detail — Coming Soon</div>} />
-          <Route path="/admin/clients"     element={<div>Admin Clients — Coming Soon</div>} />
-          <Route path="/admin/staff"       element={<div>Admin Staff — Coming Soon</div>} />
-          <Route path="/admin/billing"     element={<div>Admin Billing — Coming Soon</div>} />
+        {/* ADMIN PROTECTED GROUP */}
+        <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/admin/dashboard"   element={<PageTransitionWrapper><AdminDashboard /></PageTransitionWrapper>} />
+            <Route path="/admin/cases"       element={<PageTransitionWrapper><Cases /></PageTransitionWrapper>} />
+            <Route path="/admin/cases/:id"   element={<PageTransitionWrapper><div>Admin Case Detail — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/admin/clients"     element={<PageTransitionWrapper><div>Admin Clients — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/admin/staff"       element={<PageTransitionWrapper><div>Admin Staff — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/admin/billing"     element={<PageTransitionWrapper><div>Admin Billing — Coming Soon</div></PageTransitionWrapper>} />
+          </Route>
         </Route>
-      </Route>
 
-      {/* LAWYER PROTECTED GROUP */}
-      <Route element={<ProtectedRoute allowedRoles={["lawyer"]} />}>
-        <Route element={<DashboardLayout />}>
-          <Route path="/lawyer/dashboard"       element={<LawyerDashboard />} />
-          <Route path="/lawyer/cases/:id"       element={<CaseDetail />} />
-          <Route path="/lawyer/calendar"        element={<CalendarWorkspace />} />
-          <Route path="/lawyer/ai"              element={<div>Lawyer AI Analyzer — Coming Soon</div>} />
-          <Route path="/lawyer/search"          element={<LegalSearch />} />
-          <Route path="/lawyer/news"            element={<LegalNews />} />
-          <Route path="/lawyer/appointments"    element={<div>Lawyer Appointments — Coming Soon</div>} />
+        {/* LAWYER PROTECTED GROUP */}
+        <Route element={<ProtectedRoute allowedRoles={["lawyer"]} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/lawyer/dashboard"       element={<PageTransitionWrapper><LawyerDashboard /></PageTransitionWrapper>} />
+            <Route path="/lawyer/cases/:id"       element={<PageTransitionWrapper><CaseDetail /></PageTransitionWrapper>} />
+            <Route path="/lawyer/calendar"        element={<PageTransitionWrapper><CalendarWorkspace /></PageTransitionWrapper>} />
+            <Route path="/lawyer/ai"              element={<PageTransitionWrapper><div>Lawyer AI Analyzer — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/lawyer/search"          element={<PageTransitionWrapper><LegalSearch /></PageTransitionWrapper>} />
+            <Route path="/lawyer/news"            element={<PageTransitionWrapper><LegalNews /></PageTransitionWrapper>} />
+            <Route path="/lawyer/appointments"    element={<PageTransitionWrapper><div>Lawyer Appointments — Coming Soon</div></PageTransitionWrapper>} />
+          </Route>
         </Route>
-      </Route>
 
-      {/* CLIENT PROTECTED GROUP */}
-      <Route element={<ProtectedRoute allowedRoles={["client"]} />}>
-        <Route element={<DashboardLayout />}>
-          <Route path="/client/dashboard"       element={<ClientDashboard />} />
-          <Route path="/client/cases"           element={<div>Client My Cases — Coming Soon</div>} />
-          <Route path="/client/cases/:id"       element={<div>Client Case Detail — Coming Soon</div>} />
-          <Route path="/client/documents"       element={<div>Client Documents — Coming Soon</div>} />
-          <Route path="/client/appointments"    element={<div>Client Appointments — Coming Soon</div>} />
-          <Route path="/client/notifications"   element={<div>Client Notifications — Coming Soon</div>} />
+        {/* CLIENT PROTECTED GROUP */}
+        <Route element={<ProtectedRoute allowedRoles={["client"]} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/client/dashboard"       element={<PageTransitionWrapper><ClientDashboard /></PageTransitionWrapper>} />
+            <Route path="/client/cases"           element={<PageTransitionWrapper><div>Client My Cases — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/client/cases/:id"       element={<PageTransitionWrapper><div>Client Case Detail — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/client/documents"       element={<PageTransitionWrapper><div>Client Documents — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/client/appointments"    element={<PageTransitionWrapper><div>Client Appointments — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/client/notifications"   element={<PageTransitionWrapper><div>Client Notifications — Coming Soon</div></PageTransitionWrapper>} />
+          </Route>
         </Route>
-      </Route>
 
-      {/* CATCH-ALL */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        {/* CATCH-ALL */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </AnimatePresence>
   );
 }
 
