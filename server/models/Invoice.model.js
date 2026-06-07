@@ -1,77 +1,85 @@
+'use strict';
+
 const mongoose = require('mongoose');
 
 const invoiceSchema = new mongoose.Schema({
   invoiceNumber: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
   },
   caseId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Case',
-    required: true
+    required: true,
   },
   clientId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
   },
   expenses: {
     type: [{
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Expense'
+      ref: 'Expense',
     }],
     required: true,
-    validate: [v => Array.isArray(v) && v.length > 0, 'Must have at least one expense']
+    validate: [
+      (v) => Array.isArray(v) && v.length > 0,
+      'Must have at least one expense',
+    ],
   },
   subtotal: {
     type: Number,
-    required: true
+    required: true,
   },
   taxRate: {
     type: Number,
-    default: 18
+    default: 18,
   },
   taxAmount: {
     type: Number,
-    required: true
+    required: true,
   },
   totalAmount: {
     type: Number,
-    required: true
+    required: true,
   },
   status: {
     type: String,
     enum: ['pending', 'paid', 'overdue'],
-    default: 'pending'
+    default: 'pending',
   },
   dueDate: {
     type: Date,
-    required: true
+    required: true,
   },
   pdfUrl: {
     type: String,
-    default: null
+    default: null,
   },
   paidAt: {
-    type: Date
-  }
+    type: Date,
+  },
 }, {
-  timestamps: true
+  timestamps: true,
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Pre-validate hook: auto-populate dueDate and invoiceNumber on first save
+// ─────────────────────────────────────────────────────────────────────────────
 invoiceSchema.pre('validate', async function (next) {
   if (this.isNew) {
     if (!this.dueDate) {
       this.dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
     }
-    
+
     if (!this.invoiceNumber) {
       const currentYear = new Date().getFullYear().toString();
       const lastInvoice = await this.constructor.findOne({
-        invoiceNumber: new RegExp('^INV-' + currentYear)
+        invoiceNumber: new RegExp('^INV-' + currentYear),
       }).sort({ invoiceNumber: -1 });
-      
+
       let nextNumber = 1;
       if (lastInvoice && lastInvoice.invoiceNumber) {
         const parts = lastInvoice.invoiceNumber.split('-');
@@ -79,11 +87,21 @@ invoiceSchema.pre('validate', async function (next) {
           nextNumber = parseInt(parts[2], 10) + 1;
         }
       }
-      
+
       this.invoiceNumber = `INV-${currentYear}-${nextNumber.toString().padStart(4, '0')}`;
     }
   }
   next();
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Compound Indexes (Sweep 2B)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Accelerates the invoice history fetch on Tab 4 (Billing) — caseId filtered, newest first.
+invoiceSchema.index({ caseId: 1, createdAt: -1 });
+
+// Accelerates admin billing overview: filter by payment status, flag overdue invoices.
+invoiceSchema.index({ status: 1, dueDate: 1 });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

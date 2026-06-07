@@ -314,7 +314,7 @@ export default function CaseDetail() {
             </div>
           </div>
           <button
-            onClick={() => console.log('case options')}
+            onClick={() => {}}
             className="p-2 rounded-md hover:bg-[#F1F5F9] text-[#64748B] transition-colors"
           >
             <MoreHorizontal size={20} />
@@ -447,7 +447,7 @@ function OverviewTab() {
               <h3 className="text-[16px] font-semibold text-[#0F172A]">Hearing Timeline</h3>
             </div>
             <button
-              onClick={() => console.log('add hearing')}
+              onClick={() => {}}
               className="text-[13px] text-[#1D4ED8] hover:underline font-medium bg-transparent border-none cursor-pointer"
             >
               + Add Hearing
@@ -551,7 +551,7 @@ function DocumentsTab({ visibleDocs, toggleShared, softDelete }) {
           <h2 className="text-[18px] font-semibold text-[#0F172A]">Document Vault</h2>
         </div>
         <button
-          onClick={() => console.log('upload document')}
+          onClick={() => {}}
           className="inline-flex items-center gap-1.5 bg-[#1D4ED8] hover:bg-[#1E40AF] text-white text-[14px] font-medium px-4 py-2 rounded-lg transition-colors"
         >
           <Upload size={14} />

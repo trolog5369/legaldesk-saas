@@ -222,7 +222,7 @@ export default function Cases() {
                   </td>
                   <td className="px-4 py-2">
                     <button
-                      onClick={() => console.log(c._id)}
+                      onClick={() => window.location.href = `/admin/cases/${c._id}`}
                       className="text-[14px] text-[#1D4ED8] hover:underline font-medium bg-transparent border-none cursor-pointer"
                     >
                       View

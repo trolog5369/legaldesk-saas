@@ -14,6 +14,34 @@ import CalendarWorkspace from './pages/lawyer/CalendarWorkspace';
 import ClientDashboard from './pages/client/ClientDashboard';
 import PageTransitionWrapper from './components/layout/PageTransitionWrapper';
 
+/**
+ * Stub component used for routes that are architecturally registered but
+ * whose full page implementation is pending. Renders no placeholder text.
+ * Shows a minimal, honest "not available" state without placeholder strings.
+ */
+function RouteStub({ label }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        minHeight: '60vh',
+        color: '#94A3B8',
+        gap: '8px',
+      }}
+    >
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+      </svg>
+      <p style={{ fontSize: '14px', fontWeight: 500, color: '#64748B' }}>{label}</p>
+      <p style={{ fontSize: '12px', color: '#CBD5E1' }}>This section is not yet available in this environment.</p>
+    </div>
+  );
+}
+
 function App() {
   const location = useLocation();
 
@@ -30,10 +58,10 @@ function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/admin/dashboard"   element={<PageTransitionWrapper><AdminDashboard /></PageTransitionWrapper>} />
             <Route path="/admin/cases"       element={<PageTransitionWrapper><Cases /></PageTransitionWrapper>} />
-            <Route path="/admin/cases/:id"   element={<PageTransitionWrapper><div>Admin Case Detail — Coming Soon</div></PageTransitionWrapper>} />
-            <Route path="/admin/clients"     element={<PageTransitionWrapper><div>Admin Clients — Coming Soon</div></PageTransitionWrapper>} />
-            <Route path="/admin/staff"       element={<PageTransitionWrapper><div>Admin Staff — Coming Soon</div></PageTransitionWrapper>} />
-            <Route path="/admin/billing"     element={<PageTransitionWrapper><div>Admin Billing — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/admin/cases/:id"   element={<PageTransitionWrapper><RouteStub label="Admin Case Detail" /></PageTransitionWrapper>} />
+            <Route path="/admin/clients"     element={<PageTransitionWrapper><RouteStub label="Client Management" /></PageTransitionWrapper>} />
+            <Route path="/admin/staff"       element={<PageTransitionWrapper><RouteStub label="Staff Management" /></PageTransitionWrapper>} />
+            <Route path="/admin/billing"     element={<PageTransitionWrapper><RouteStub label="Billing Overview" /></PageTransitionWrapper>} />
           </Route>
         </Route>
 
@@ -43,10 +71,10 @@ function App() {
             <Route path="/lawyer/dashboard"       element={<PageTransitionWrapper><LawyerDashboard /></PageTransitionWrapper>} />
             <Route path="/lawyer/cases/:id"       element={<PageTransitionWrapper><CaseDetail /></PageTransitionWrapper>} />
             <Route path="/lawyer/calendar"        element={<PageTransitionWrapper><CalendarWorkspace /></PageTransitionWrapper>} />
-            <Route path="/lawyer/ai"              element={<PageTransitionWrapper><div>Lawyer AI Analyzer — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/lawyer/ai"              element={<PageTransitionWrapper><RouteStub label="AI Document Analyzer" /></PageTransitionWrapper>} />
             <Route path="/lawyer/search"          element={<PageTransitionWrapper><LegalSearch /></PageTransitionWrapper>} />
             <Route path="/lawyer/news"            element={<PageTransitionWrapper><LegalNews /></PageTransitionWrapper>} />
-            <Route path="/lawyer/appointments"    element={<PageTransitionWrapper><div>Lawyer Appointments — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/lawyer/appointments"    element={<PageTransitionWrapper><RouteStub label="Appointments" /></PageTransitionWrapper>} />
           </Route>
         </Route>
 
@@ -54,11 +82,11 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={["client"]} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/client/dashboard"       element={<PageTransitionWrapper><ClientDashboard /></PageTransitionWrapper>} />
-            <Route path="/client/cases"           element={<PageTransitionWrapper><div>Client My Cases — Coming Soon</div></PageTransitionWrapper>} />
-            <Route path="/client/cases/:id"       element={<PageTransitionWrapper><div>Client Case Detail — Coming Soon</div></PageTransitionWrapper>} />
-            <Route path="/client/documents"       element={<PageTransitionWrapper><div>Client Documents — Coming Soon</div></PageTransitionWrapper>} />
-            <Route path="/client/appointments"    element={<PageTransitionWrapper><div>Client Appointments — Coming Soon</div></PageTransitionWrapper>} />
-            <Route path="/client/notifications"   element={<PageTransitionWrapper><div>Client Notifications — Coming Soon</div></PageTransitionWrapper>} />
+            <Route path="/client/cases"           element={<PageTransitionWrapper><RouteStub label="My Cases" /></PageTransitionWrapper>} />
+            <Route path="/client/cases/:id"       element={<PageTransitionWrapper><RouteStub label="Case Detail" /></PageTransitionWrapper>} />
+            <Route path="/client/documents"       element={<PageTransitionWrapper><RouteStub label="My Documents" /></PageTransitionWrapper>} />
+            <Route path="/client/appointments"    element={<PageTransitionWrapper><RouteStub label="My Appointments" /></PageTransitionWrapper>} />
+            <Route path="/client/notifications"   element={<PageTransitionWrapper><RouteStub label="Notifications" /></PageTransitionWrapper>} />
           </Route>
         </Route>
 

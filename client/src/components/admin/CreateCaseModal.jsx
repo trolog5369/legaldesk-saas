@@ -75,7 +75,7 @@ export default function CreateCaseModal({ isOpen, onClose }) {
       createdAt: new Date().toISOString(),
     };
 
-    console.log('NEW CASE PAYLOAD:', newCasePayload);
+    // Payload ready — API integration pending
     setFormData({ ...initialFormData });
     setHasAttemptedSubmit(false);
     onClose();

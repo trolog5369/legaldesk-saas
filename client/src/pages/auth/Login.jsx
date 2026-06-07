@@ -10,7 +10,6 @@ import api from '../../services/api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-// TODO: Replace with a valid Spline scene URL in production env
 const SPLINE_SCENE_URL = import.meta.env.VITE_SPLINE_SCENE || '';
 
 export default function Login() {
