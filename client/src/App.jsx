@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/shared/ProtectedRoute';
-import LoginPage from './pages/auth/LoginPage';
+import Login from './pages/auth/Login';
 import RegisterPage from './pages/auth/RegisterPage';
 import DashboardLayout from './components/shared/DashboardLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -16,7 +16,7 @@ function App() {
     <Routes>
       {/* PUBLIC */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/register" element={<RegisterPage />} />
 
       {/* ADMIN PROTECTED GROUP */}
