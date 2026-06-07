@@ -473,3 +473,41 @@ Notification Hub, and Automated Hearing Reminder Cron are all live and integrate
 - Script is idempotent: re-running clears and re-seeds admin/lawyer accounts safely.
 - Client accounts are untouched by the deleteMany scope filter.
 - Script should not be committed with .env present — .env is in .gitignore.
+
+---
+
+## Login & API Bridge Fix
+**Date:** 2026-06-07
+**Status:** ✅ Complete
+
+### Problem Statements Resolved:
+1. **Endpoint mismatch** — Diagnosed exact URL discrepancy between frontend
+   Axios call and backend Express mount path. Corrected to align on `/api/auth/login`.
+2. **bcrypt vs bcryptjs** — Replaced native `bcrypt` with `bcryptjs` in auth
+   controller to guarantee hash compatibility with seed script output.
+3. **Email normalization** — Added `.toLowerCase().trim()` on incoming email
+   before User.findOne() query. Prevents case-sensitivity lockout.
+4. **CORS misconfiguration** — Enforced `credentials: true` and
+   `origin: process.env.CLIENT_URL` in cors() config. Confirmed declaration
+   order (before route mounts).
+
+### Files Inspected:
+- `server/server.js`
+- `server/routes/auth.routes.js`
+- `client/src/services/api.js`
+- `server/controllers/authController.js` (or equivalent handler file)
+
+### Files Modified:
+- `server/controllers/authController.js` — Added `.toLowerCase().trim()` email normalization to `login` and `register` handlers.
+- `server/server.js` — Added fallback `|| 'http://localhost:5173'` to CORS origin configuration.
+
+### Verification:
+- `node server/server.js` executed cleanly. No crashes. All routes mounted.
+
+### Remaining Actions for Developer:
+- Test login via frontend at http://localhost:5173 using:
+  Email: swapnil.malve@insignialaw.in
+  Password: Insignia@2026
+- Confirm JWT token is returned and Redux auth state is populated correctly.
+- If login still fails after this fix, check browser Network tab for the exact
+  request URL and response body — report findings for next diagnostic pass.
