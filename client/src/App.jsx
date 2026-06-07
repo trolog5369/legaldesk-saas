@@ -4,6 +4,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import DashboardLayout from './components/shared/DashboardLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import Cases from './pages/admin/Cases';
 import LawyerDashboard from './pages/lawyer/LawyerDashboard';
 import ClientDashboard from './pages/client/ClientDashboard';
 
@@ -19,7 +20,7 @@ function App() {
       <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/admin/dashboard"   element={<AdminDashboard />} />
-          <Route path="/admin/cases"       element={<div>Admin Cases — Coming Soon</div>} />
+          <Route path="/admin/cases"       element={<Cases />} />
           <Route path="/admin/cases/:id"   element={<div>Admin Case Detail — Coming Soon</div>} />
           <Route path="/admin/clients"     element={<div>Admin Clients — Coming Soon</div>} />
           <Route path="/admin/staff"       element={<div>Admin Staff — Coming Soon</div>} />

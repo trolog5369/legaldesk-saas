@@ -166,3 +166,33 @@
 - Framer Motion used only where Blueprint specifies: stat card hover lift, page transition, sidebar spring collapse, client hearing countdown pulse, hero card entrance
 - Status badge spec (pill + 15% bg opacity + solid text + left border) applied consistently across all three dashboards
 - CommonJS not applicable (frontend-only day)
+
+---
+## Week 2 — Day 2: Admin Case Ledger & Creation Engine
+**Date:** 2026-06-07
+
+### Files Created
+- `client/src/pages/admin/Cases.jsx`
+- `client/src/components/admin/CreateCaseModal.jsx`
+
+### Files Modified
+- `client/src/App.jsx` — registered `/admin/cases` route under DashboardLayout
+
+### Functional States Built
+- SAMPLE_CASES hardcoded mock array (6 entries, all Blueprint schema fields)
+- Live search filter on title + caseNumber (case-insensitive substring match)
+- Status pill filter (All + 5 status values) composing with search filter
+- STATUS_STYLES map resolving Blueprint color tokens to badge classes
+- Data table rendering filteredCases with 8 columns incl. status badge
+- Empty state UI when filteredCases.length === 0
+- CreateCaseModal: controlled formData state for all 6 scalar fields
+- Multi-select lawyer assignment cluster (pill-token toggle, selected state styling)
+- Submit validation: title + caseType + clientId + min 1 lawyer required
+- On valid submit: console.log(newCasePayload), close modal
+- Modal backdrop click-to-close with inner panel click propagation stop
+
+### Pending (Next Pass)
+- Wire Cases.jsx to real GET /api/cases endpoint
+- Wire CreateCaseModal submit to POST /api/cases
+- Admin case detail route and read-only case view
+
