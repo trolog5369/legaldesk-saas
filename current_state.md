@@ -196,3 +196,39 @@
 - Wire CreateCaseModal submit to POST /api/cases
 - Admin case detail route and read-only case view
 
+---
+## Week 2 — Day 3: Backend Case API Endpoints
+**Date:** 2026-06-07
+
+### Files Created
+- `server/controllers/caseController.js`
+- `server/routes/case.routes.js`
+
+### Files Modified
+- `server/server.js` — mounted /api/cases router
+- `client/src/pages/admin/Cases.jsx` — replaced hardcoded mock data with live
+  useEffect Axios fetch; added loading and error render states
+
+### Backend Architecture Built
+- createCase: full validation, auto-generated caseNumber (LD-YYYY-XXXX via
+  year-scoped document count + padStart(4)), createdBy stamped from JWT payload,
+  status locked to 'active' on creation, populated response on 201
+- getCases: role-branching query logic (admin: all, lawyer: lawyers[] contains id,
+  client: client === id), .populate() on client + lawyers + createdBy with password
+  field excluded, .lean() for read performance, sorted createdAt desc
+- Middleware chain: verifyToken → checkRole → controller (checkCaseAccess deferred
+  to single-case routes in future session)
+
+### Frontend Integration
+- SAMPLE_CASES array removed from Cases.jsx
+- cases/loading/error state trio added
+- useEffect fetches GET /api/cases on mount, unwraps { success, count, data } envelope
+- Loader2 spinner shown during fetch; AlertCircle error state on failure
+- filteredCases derived const updated to reference live cases state
+- client.name and lawyers[].name accessors guarded with optional chaining
+
+### Pending (Next Pass)
+- GET /api/cases/:id — single case detail fetch
+- PATCH /api/cases/:id — status update, lawyer reassignment
+- checkCaseAccess middleware wired to :caseId routes
+- CreateCaseModal POST /api/cases live submission replacing console.log

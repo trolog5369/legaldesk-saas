@@ -24,8 +24,10 @@ app.get('/api/health', (req, res) => {
 
 const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
+const caseRoutes = require('./routes/case.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/cases', caseRoutes);
 
 const PORT = process.env.PORT;
 

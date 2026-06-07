@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Search, FileSearch } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, FileSearch, Loader2, AlertCircle } from 'lucide-react';
+import api from '../../services/api';
 import CreateCaseModal from '../../components/admin/CreateCaseModal';
 
 // ── Status style map (Blueprint color tokens) ──────────────────────────
@@ -46,69 +47,7 @@ const FILTER_PILLS = [
   { key: 'closed', label: 'Closed' },
 ];
 
-// ── Hardcoded mock data ────────────────────────────────────────────────
-const SAMPLE_CASES = [
-  {
-    _id: 'c001',
-    caseNumber: 'LD-2024-1001',
-    title: 'Kapoor vs. State of Maharashtra',
-    caseType: 'criminal',
-    status: 'active',
-    client: { name: 'Rajesh Kapoor' },
-    lawyers: [{ name: 'Adv. Priya Mehta' }, { name: 'Adv. Rohan Das' }],
-    nextHearing: '2024-08-15',
-  },
-  {
-    _id: 'c002',
-    caseNumber: 'LD-2024-1042',
-    title: 'Iyer Property Dispute — Koramangala Plot',
-    caseType: 'property',
-    status: 'urgent',
-    client: { name: 'Sneha Iyer' },
-    lawyers: [{ name: 'Adv. Kavita Nair' }],
-    nextHearing: '2024-07-22',
-  },
-  {
-    _id: 'c003',
-    caseNumber: 'LD-2024-1087',
-    title: 'Sharma Custody Agreement',
-    caseType: 'family',
-    status: 'hearing_soon',
-    client: { name: 'Amit Sharma' },
-    lawyers: [{ name: 'Adv. Kavita Nair' }, { name: 'Adv. Sunil Reddy' }],
-    nextHearing: '2024-07-10',
-  },
-  {
-    _id: 'c004',
-    caseNumber: 'LD-2024-0819',
-    title: 'TechNova IP Licensing Deal',
-    caseType: 'corporate',
-    status: 'completed',
-    client: { name: 'Vikram Patel' },
-    lawyers: [{ name: 'Adv. Sunil Reddy' }],
-    nextHearing: '—',
-  },
-  {
-    _id: 'c005',
-    caseNumber: 'LD-2024-0534',
-    title: 'Deshmukh Civil Recovery Suit',
-    caseType: 'civil',
-    status: 'closed',
-    client: { name: 'Meera Deshmukh' },
-    lawyers: [{ name: 'Adv. Priya Mehta' }],
-    nextHearing: '—',
-  },
-  {
-    _id: 'c006',
-    caseNumber: 'LD-2024-1103',
-    title: 'Gupta Land Acquisition Challenge',
-    caseType: 'property',
-    status: 'active',
-    client: { name: 'Rakesh Gupta' },
-    lawyers: [{ name: 'Adv. Rohan Das' }, { name: 'Adv. Kavita Nair' }],
-    nextHearing: '2024-09-03',
-  },
-];
+
 
 // ── Helper: capitalize first letter ────────────────────────────────────
 function capitalize(str) {
@@ -139,9 +78,26 @@ export default function Cases() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
+  const [cases, setCases] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchCases = async () => {
+      try {
+        const response = await api.get('/cases');
+        setCases(response.data.data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to load cases');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCases();
+  }, []);
 
   // Derived filtered list (not state)
-  const filteredCases = SAMPLE_CASES.filter(c => {
+  const filteredCases = cases.filter(c => {
     // Status filter
     if (statusFilter !== 'all' && c.status !== statusFilter) return false;
     // Search filter
@@ -207,7 +163,17 @@ export default function Cases() {
 
       {/* ── Data Table ──────────────────────────────────────── */}
       <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden">
-        {filteredCases.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 size={32} className="animate-spin text-[#1D4ED8] mb-3" />
+            <p className="text-[14px] text-[#64748B]">Loading cases...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <AlertCircle size={40} className="text-[#EF4444] mb-3 opacity-70" />
+            <p className="text-[14px] text-[#EF4444]">{error}</p>
+          </div>
+        ) : filteredCases.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-[#94A3B8]">
             <FileSearch size={40} className="mb-3 opacity-50" />
             <p className="text-[14px]">No cases match your search or filter.</p>
@@ -243,16 +209,16 @@ export default function Cases() {
                     {capitalize(c.caseType)}
                   </td>
                   <td className="px-4 py-2 text-[14px] text-[#0F172A]">
-                    {c.client.name}
+                    {c.client?.name}
                   </td>
                   <td className="px-4 py-2 text-[13px] text-[#64748B] max-w-[180px] truncate">
-                    {c.lawyers.map(l => l.name).join(', ')}
+                    {c.lawyers?.map(l => l.name).join(', ')}
                   </td>
                   <td className="px-4 py-2">
                     <StatusBadge status={c.status} />
                   </td>
                   <td className="px-4 py-2 text-[13px] text-[#64748B] whitespace-nowrap">
-                    {c.nextHearing}
+                    {c.nextHearing ? new Date(c.nextHearing).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-4 py-2">
                     <button
