@@ -653,10 +653,16 @@ function AITab({ caseId, visibleDocs }) {
   const [expandedPastIndex, setExpandedPastIndex] = useState(null);
   const streamViewportRef = useRef(null);
 
-  // ── Fetch past analyses on mount ───────────────────────────────────
+  const [chatHistory, setChatHistory] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatError, setChatError] = useState(null);
+
+  const chatBottomRef = useRef(null);
+
+  // ── Fetch past analyses & chat history on mount ────────────────────
   useEffect(() => {
-    // TODO: implement GET /api/ai/analyses/:caseId on Day 3
-    const fetchPastAnalyses = async () => {
+    const fetchAnalysisData = async () => {
       try {
         const res = await fetch(`/api/ai/analyses/${caseId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -664,13 +670,23 @@ function AITab({ caseId, visibleDocs }) {
         if (res.ok) {
           const data = await res.json();
           setPastAnalyses(data.analyses || []);
+          setChatHistory(data.chatHistory || []);
+        } else {
+          setPastAnalyses([]);
+          setChatHistory([]);
         }
       } catch {
-        // Silently catch — endpoint does not exist yet
+        setPastAnalyses([]);
+        setChatHistory([]);
       }
     };
-    fetchPastAnalyses();
+    fetchAnalysisData();
   }, [caseId, token]);
+
+  // ── Scroll anchor on message update ───────────────────────────────
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory]);
 
   // ── Auto-scroll stream viewport ────────────────────────────────────
   useEffect(() => {
@@ -740,6 +756,47 @@ function AITab({ caseId, visibleDocs }) {
     } catch (error) {
       setAnalyzeError(error.message);
       setIsAnalyzing(false);
+    }
+  };
+
+  // ── sendChatMessage() — optimistic append + post to AI chat endpoint ─
+  const sendChatMessage = async () => {
+    const messageToSend = chatInput.trim();
+    if (!messageToSend) return;
+
+    setIsChatLoading(true);
+    setChatError(null);
+    setChatInput('');
+
+    // Optimistic UI append
+    const userMessage = { role: 'user', content: messageToSend, timestamp: new Date() };
+    setChatHistory((prev) => [...prev, userMessage]);
+
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ caseId, message: messageToSend }),
+      });
+
+      if (!response.ok) {
+        setChatError('Failed to get a response. Please try again.');
+        setIsChatLoading(false);
+        setChatHistory((prev) => prev.slice(0, -1));
+        return;
+      }
+
+      const data = await response.json();
+      const assistantEntry = data.assistantEntry;
+      setChatHistory((prev) => [...prev, assistantEntry]);
+      setIsChatLoading(false);
+    } catch {
+      setChatError('An unexpected error occurred.');
+      setIsChatLoading(false);
+      setChatHistory((prev) => prev.slice(0, -1));
     }
   };
 
@@ -1224,6 +1281,181 @@ function AITab({ caseId, visibleDocs }) {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* ── Section F — Chat UI ────────────────────────────────────── */}
+      {(chatHistory.length > 0 || analysisResult !== null) && (
+        <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-sm">
+          {/* Sub-section: Chat heading row */}
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#0F172A', margin: '0 0 4px 0' }}>
+              Chat with Document
+            </h3>
+            <span style={{ fontSize: '13px', color: '#64748B' }}>
+              Ask follow-up questions about this case's documents.
+            </span>
+          </div>
+
+          {/* Sub-section: Message bubble list */}
+          <div
+            style={{
+              height: '420px',
+              overflowY: 'auto',
+              border: '1px solid #E2E8F0',
+              borderRadius: '8px',
+              padding: '16px',
+              backgroundColor: '#F8FAFC',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              marginBottom: '16px',
+            }}
+          >
+            {chatHistory.map((msg, idx) => {
+              const isUser = msg.role === 'user';
+              return (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: isUser ? 'flex-end' : 'flex-start',
+                    width: '100%',
+                  }}
+                >
+                  <div
+                    style={{
+                      maxWidth: '72%',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: 1.5,
+                      backgroundColor: isUser ? '#1D4ED8' : '#F1F5F9',
+                      color: isUser ? '#FFFFFF' : '#0F172A',
+                      borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {msg.content}
+                  </div>
+                  {!isUser && msg.timestamp && (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        color: '#94A3B8',
+                        marginTop: '4px',
+                        marginLeft: '8px',
+                      }}
+                    >
+                      {new Date(msg.timestamp).toLocaleTimeString('en-IN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                      })}
+                    </span>
+                  )}
+                </motion.div>
+              );
+            })}
+
+            {/* Sub-section: Loading indicator */}
+            {isChatLoading && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  alignSelf: 'flex-start',
+                  width: '100%',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '4px',
+                    backgroundColor: '#F1F5F9',
+                    padding: '10px 14px',
+                    borderRadius: '18px 18px 18px 4px',
+                    alignItems: 'center',
+                  }}
+                >
+                  {[0, 1, 2].map((dotIndex) => (
+                    <motion.div
+                      key={dotIndex}
+                      animate={{ y: [0, -6, 0] }}
+                      transition={{
+                        duration: 0.6,
+                        repeat: Infinity,
+                        delay: dotIndex * 0.15,
+                      }}
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: '#94A3B8',
+                      }}
+                    />
+                  ))}
+                </div>
+                <span style={{ fontSize: '12px', color: '#64748B' }}>Claude is thinking…</span>
+              </div>
+            )}
+            <div ref={chatBottomRef} />
+          </div>
+
+          {/* Sub-section: Input row */}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            <textarea
+              rows={2}
+              value={chatInput}
+              disabled={isChatLoading || isAnalyzing}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendChatMessage();
+                }
+              }}
+              placeholder="Ask a question about this document…"
+              style={{
+                flex: 1,
+                borderRadius: '8px',
+                border: '1px solid #CBD5E1',
+                padding: '10px 12px',
+                fontSize: '14px',
+                resize: 'none',
+                backgroundColor: isChatLoading || isAnalyzing ? '#F1F5F9' : '#FFFFFF',
+                outline: 'none',
+              }}
+            />
+            <button
+              onClick={sendChatMessage}
+              disabled={chatInput.trim() === '' || isChatLoading || isAnalyzing}
+              style={{
+                backgroundColor: chatInput.trim() === '' || isChatLoading || isAnalyzing ? '#93C5FD' : '#1D4ED8',
+                color: '#FFFFFF',
+                fontSize: '14px',
+                fontWeight: 600,
+                padding: '10px 20px',
+                borderRadius: '8px',
+                border: 'none',
+                height: '42px',
+                cursor: chatInput.trim() === '' || isChatLoading || isAnalyzing ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.15s ease',
+              }}
+            >
+              Send
+            </button>
+          </div>
+          {chatError && (
+            <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '8px', marginBottom: 0 }}>
+              {chatError}
+            </p>
+          )}
         </div>
       )}
     </div>

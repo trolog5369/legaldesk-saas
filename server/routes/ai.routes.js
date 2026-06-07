@@ -6,6 +6,7 @@ const checkRole = require('../middleware/checkRole');
 const Case = require('../models/Case.model');
 const Document = require('../models/Document.model');
 const AIAnalysis = require('../models/AIAnalysis.model');
+const { chatWithDocument } = require('../services/claudeService');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -133,6 +134,113 @@ router.post('/analyze', verifyToken, checkRole(['lawyer']), async (req, res) => 
     }
     res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
     res.end();
+  }
+});
+
+// GET /analyses/:caseId — Retrieve analyses and chat history for a case
+router.get('/analyses/:caseId', verifyToken, checkRole(['lawyer']), async (req, res) => {
+  try {
+    // Step 1 — Case Existence Guard
+    const foundCase = await Case.findById(req.params.caseId);
+    if (!foundCase) {
+      return res.status(404).json({ message: 'Case not found.' });
+    }
+
+    // Step 2 — Lawyer Assignment Guard
+    const isAssigned = foundCase.lawyers
+      .map((id) => id.toString())
+      .includes(req.user.userId.toString());
+    if (!isAssigned) {
+      return res.status(403).json({ message: 'Access denied. You are not assigned to this case.' });
+    }
+
+    // Step 3 — Fetch AIAnalysis Record
+    const foundRecord = await AIAnalysis.findOne({ case: req.params.caseId });
+    if (!foundRecord) {
+      return res.status(200).json({ analyses: [], chatHistory: [] });
+    }
+
+    return res.status(200).json({
+      analyses: foundRecord.analyses,
+      chatHistory: foundRecord.chatHistory,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal server error.', error: error.message });
+  }
+});
+
+// POST /chat — Scoped multi-turn chat about the document analysis
+router.post('/chat', verifyToken, checkRole(['lawyer']), async (req, res) => {
+  try {
+    const { caseId, message } = req.body;
+
+    // Step 1 — Input Validation
+    if (!caseId) {
+      return res.status(400).json({ message: 'caseId is required.' });
+    }
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'message is required.' });
+    }
+
+    // Step 2 — Case Existence & Lawyer Assignment Guard
+    const foundCase = await Case.findById(caseId);
+    if (!foundCase) {
+      return res.status(404).json({ message: 'Case not found.' });
+    }
+
+    const isAssigned = foundCase.lawyers
+      .map((id) => id.toString())
+      .includes(req.user.userId.toString());
+    if (!isAssigned) {
+      return res.status(403).json({ message: 'Access denied. You are not assigned to this case.' });
+    }
+
+    // Step 3 — Fetch Current Chat History
+    const foundAnalysis = await AIAnalysis.findOne({ case: caseId });
+    if (!foundAnalysis) {
+      return res.status(400).json({ message: 'No analysis found for this case. Please analyze a document first.' });
+    }
+
+    const existingHistory = foundAnalysis.chatHistory;
+
+    // Step 4 — Invoke Claude with Full Context
+    let assistantResponse;
+    try {
+      assistantResponse = await chatWithDocument(existingHistory, message.trim());
+    } catch (error) {
+      return res.status(502).json({ message: 'AI chat failed.', error: error.message });
+    }
+
+    // Step 5 — Atomic Double-Push Persistence
+    const userEntry = {
+      role: 'user',
+      content: message.trim(),
+      timestamp: new Date(),
+    };
+    const assistantEntry = {
+      role: 'assistant',
+      content: assistantResponse,
+      timestamp: new Date(),
+    };
+
+    const updatedRecord = await AIAnalysis.findOneAndUpdate(
+      { case: caseId },
+      {
+        $push: { chatHistory: { $each: [userEntry, assistantEntry] } },
+        $set: { updatedAt: new Date() },
+      },
+      { new: true }
+    );
+
+    // Step 6 — Response
+    return res.status(200).json({
+      message: 'Chat response generated.',
+      userEntry,
+      assistantEntry,
+      updatedChatHistory: updatedRecord.chatHistory,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal server error.', error: error.message });
   }
 });
 

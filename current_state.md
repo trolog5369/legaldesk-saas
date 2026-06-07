@@ -349,3 +349,33 @@
 - Implement POST /api/ai/chat backend route using chatWithDocument() service
 - Build Chat Interface UI component in Tab 3 below the analysis result
 - Wire chatHistory persistence to AIAnalysis.chatHistory array via $push upsert
+
+---
+
+## Week 3 — Day 3: Case Chat Memory & Contextual UI
+**Date:** 2026-06-07
+**Status:** Complete
+
+### Files Modified
+- `server/routes/ai.routes.js` — Added GET /analyses/:caseId (case existence guard + lawyer assignment guard, returns { analyses[], chatHistory[] } or empty arrays if no record). Added POST /chat (caseId + message validation, case guard, lawyer guard, requires prior AIAnalysis existence, fetches full chatHistory, calls chatWithDocument() with complete context, atomic $push with $each for both userEntry and assistantEntry in single DB write, returns updatedChatHistory).
+- `client/src/pages/lawyer/CaseDetail.jsx` — Tab 3 Day 2 TODO scaffold replaced with live GET /analyses/:caseId useEffect on mount. New state: chatHistory, chatInput, isChatLoading, chatError. chatBottomRef useRef scroll anchor fires on every chatHistory state update. Chat UI rendered below analysis result: message bubbles (user right/blue, assistant left/slate), Framer Motion per-bubble reveal animation, staggered 3-dot bounce loading indicator, controlled textarea with Enter-to-send (Shift+Enter newline), send button disabled states, chatError display. sendChatMessage(): optimistic user bubble append, fetch POST /chat, assistant bubble append on success, rollback on failure.
+
+### Architecture Decisions Locked
+- Atomic $push with $each: both user and assistant entries written in one findOneAndUpdate call — no split-write corruption risk.
+- chatWithDocument() receives the full chatHistory array from DB on every POST /chat — Claude gets complete conversation context, no sliding window truncation.
+- GET /analyses enforces same lawyer assignment guard as POST /analyze — no cross-case data leakage.
+- POST /chat returns 400 if no AIAnalysis exists for case — chat without prior analysis context is blocked by design.
+- Frontend manages chatHistory with local appends (not server state replacement) to prevent re-render flash on every turn.
+- Optimistic user bubble with rollback on failure — perceived latency eliminated on send.
+- Scroll anchor ref targets a zero-height div after last bubble, fires on chatHistory dependency, smooth scroll behavior.
+- Input locked (textarea + button both disabled) for both isChatLoading and isAnalyzing states — one AI operation at a time.
+
+### API Surface Added
+- GET /api/ai/analyses/:caseId — Authenticated (Lawyer only), returns { analyses[], chatHistory[] }
+- POST /api/ai/chat — Authenticated (Lawyer only), JSON body: { caseId, message }, returns { userEntry, assistantEntry, updatedChatHistory }
+
+### Pending (Day 4)
+- Indian Kanoon API proxy route (GET /api/search)
+- Save judgement to case route (POST /api/search/save)
+- AI judgement summarization via claudeService
+- Legal Search page frontend (/lawyer/search)
