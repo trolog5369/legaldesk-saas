@@ -441,3 +441,35 @@ Notification Hub, and Automated Hearing Reminder Cron are all live and integrate
   (config/nodemailer.js or services/emailService.js).
 
 ### Next: Week 4 — Billing, Polish & Deployment
+
+---
+
+## Firm Roster Seed — Insignia Law Firm
+**Date:** 2026-06-07
+**Status:** ✅ Complete
+
+### File Created:
+- `server/scripts/seedFirm.js` — Standalone CommonJS seed script. Loads dotenv
+  independently, connects to MongoDB, clears prior admin/lawyer test accounts,
+  inserts 7 production accounts for Insignia Law Firm with bcryptjs-hashed
+  shared password. Logs full verification output to terminal.
+
+### Accounts Seeded:
+| Name | Email | Role |
+|---|---|---|
+| Adv. Swapnil Kishor Malve | swapnil.malve@insignialaw.in | admin |
+| Adv. Lata Sukhdev Gaikwad | lata.gaikwad@insignialaw.in | lawyer (Civil) |
+| Adv. Vaishali Digambar Chabukswar | vaishali.chabukswar@insignialaw.in | lawyer (Criminal) |
+| Adv. Swapnil Sunil Satav | swapnil.satav@insignialaw.in | lawyer (Criminal) |
+| Adv. Khushi Jagdish Bora | khushi.bora@insignialaw.in | lawyer (Corporate) |
+| Adv. Omkar Nanasaheb Kawale | omkar.kawale@insignialaw.in | lawyer (Corporate) |
+| Adv. Sanket Sampat Jadhav | sanket.jadhav@insignialaw.in | lawyer (Corporate) |
+
+### Default Credential:
+- Password: `Insignia@2026` (bcryptjs, 10 salt rounds)
+- All accounts must update passwords on first login.
+
+### Notes:
+- Script is idempotent: re-running clears and re-seeds admin/lawyer accounts safely.
+- Client accounts are untouched by the deleteMany scope filter.
+- Script should not be committed with .env present — .env is in .gitignore.
