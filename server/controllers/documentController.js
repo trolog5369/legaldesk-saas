@@ -7,7 +7,7 @@ const Document = require('../models/Document.model');
  * @route   POST /api/documents/upload
  * @access  Admin, Lawyer
  */
-const uploadDocument = async (req, res) => {
+const uploadDocument = async (req, res, next) => {
   try {
     // ── Step 1: Input Validation ────────────────────────────────
     if (!req.file) {
@@ -76,10 +76,7 @@ const uploadDocument = async (req, res) => {
       document: savedDocument,
     });
   } catch (error) {
-    return res.status(500).json({
-      message: 'Upload failed.',
-      error: error.message,
-    });
+    next(error);
   }
 };
 

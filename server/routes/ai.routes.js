@@ -11,7 +11,7 @@ const { chatWithDocument } = require('../services/claudeService');
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // POST /analyze — SSE streaming document analysis with Claude AI
-router.post('/analyze', verifyToken, checkRole(['lawyer']), async (req, res) => {
+router.post('/analyze', verifyToken, checkRole(['lawyer']), async (req, res, next) => {
   try {
     // Step 1 — Input Validation (fail fast)
     if (!req.body.caseId) {
@@ -130,7 +130,7 @@ router.post('/analyze', verifyToken, checkRole(['lawyer']), async (req, res) => 
   } catch (error) {
     // If SSE headers haven't been sent yet, respond with JSON error
     if (!res.headersSent) {
-      return res.status(500).json({ message: 'Internal server error.', error: error.message });
+      return next(error);
     }
     res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
     res.end();
@@ -138,7 +138,7 @@ router.post('/analyze', verifyToken, checkRole(['lawyer']), async (req, res) => 
 });
 
 // GET /analyses/:caseId — Retrieve analyses and chat history for a case
-router.get('/analyses/:caseId', verifyToken, checkRole(['lawyer']), async (req, res) => {
+router.get('/analyses/:caseId', verifyToken, checkRole(['lawyer']), async (req, res, next) => {
   try {
     // Step 1 — Case Existence Guard
     const foundCase = await Case.findById(req.params.caseId);
@@ -165,12 +165,12 @@ router.get('/analyses/:caseId', verifyToken, checkRole(['lawyer']), async (req, 
       chatHistory: foundRecord.chatHistory,
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Internal server error.', error: error.message });
+    next(error);
   }
 });
 
 // POST /chat — Scoped multi-turn chat about the document analysis
-router.post('/chat', verifyToken, checkRole(['lawyer']), async (req, res) => {
+router.post('/chat', verifyToken, checkRole(['lawyer']), async (req, res, next) => {
   try {
     const { caseId, message } = req.body;
 
@@ -240,7 +240,7 @@ router.post('/chat', verifyToken, checkRole(['lawyer']), async (req, res) => {
       updatedChatHistory: updatedRecord.chatHistory,
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Internal server error.', error: error.message });
+    next(error);
   }
 });
 

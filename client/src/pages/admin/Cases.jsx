@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, FileSearch, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 import CreateCaseModal from '../../components/admin/CreateCaseModal';
@@ -75,6 +76,7 @@ function StatusBadge({ status }) {
 
 // ── Main Component ─────────────────────────────────────────────────────
 export default function Cases() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -222,7 +224,7 @@ export default function Cases() {
                   </td>
                   <td className="px-4 py-2">
                     <button
-                      onClick={() => window.location.href = `/admin/cases/${c._id}`}
+                      onClick={() => navigate(`/admin/cases/${c._id}`)}
                       className="text-[14px] text-[#1D4ED8] hover:underline font-medium bg-transparent border-none cursor-pointer"
                     >
                       View
@@ -236,7 +238,14 @@ export default function Cases() {
       </div>
 
       {/* ── Create Case Modal ───────────────────────────────── */}
-      <CreateCaseModal isOpen={showModal} onClose={() => setShowModal(false)} />
+      <CreateCaseModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onCaseCreated={(newCase) => {
+          setCases(prev => [newCase, ...prev]);
+          setShowModal(false);
+        }}
+      />
     </div>
   );
 }

@@ -32,7 +32,16 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Never attempt a silent refresh when the failing request IS the refresh
+    // endpoint — doing so creates an infinite loop that ends with a forced
+    // window.location redirect, overriding AuthLoader's controlled flow.
+    const isRefreshEndpoint = originalRequest?.url?.includes('/auth/refresh');
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isRefreshEndpoint
+    ) {
       originalRequest._retry = true;
 
       try {

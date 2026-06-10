@@ -4,7 +4,7 @@ const verifyToken = require('../middleware/verifyToken');
 const Notification = require('../models/Notification.model');
 
 // GET / — List notifications for the authenticated user
-router.get('/', verifyToken, async (req, res) => {
+router.get('/', verifyToken, async (req, res, next) => {
   try {
     const notifications = await Notification.find({ user: req.user.userId })
       .sort({ createdAt: -1 })
@@ -22,13 +22,12 @@ router.get('/', verifyToken, async (req, res) => {
       unreadCount,
     });
   } catch (err) {
-    console.error('Fetch notifications error:', err.message);
-    return res.status(500).json({ success: false, message: 'Failed to fetch notifications' });
+    next(err);
   }
 });
 
 // PATCH /:id/read — Mark a single notification as read (ownership check)
-router.patch('/:id/read', verifyToken, async (req, res) => {
+router.patch('/:id/read', verifyToken, async (req, res, next) => {
   try {
     const notification = await Notification.findOneAndUpdate(
       { _id: req.params.id, user: req.user.userId },
@@ -42,8 +41,7 @@ router.patch('/:id/read', verifyToken, async (req, res) => {
 
     return res.status(200).json({ success: true, notification });
   } catch (err) {
-    console.error('Mark notification read error:', err.message);
-    return res.status(500).json({ success: false, message: 'Failed to update notification' });
+    next(err);
   }
 });
 

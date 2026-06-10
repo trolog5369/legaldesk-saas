@@ -44,6 +44,13 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    // Used by AuthLoader to rehydrate state from the refresh cookie on page load
+    restoreSession: (state, action) => {
+      state.accessToken = action.payload.accessToken;
+      state.user = action.payload.user;
+      state.isLoading = false;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -70,7 +77,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { setAccessToken, clearError } = authSlice.actions;
+export const { setAccessToken, clearError, restoreSession } = authSlice.actions;
 
 export const selectUser = (state) => state.auth.user;
 export const selectAccessToken = (state) => state.auth.accessToken;

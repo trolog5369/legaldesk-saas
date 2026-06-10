@@ -56,7 +56,7 @@ router.post(
     next();
   },
   checkCaseAccess,
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { caseId, title, citation, court, judgmentDate, kanoonUrl, tags, rawText } = req.body;
 
@@ -104,8 +104,7 @@ router.post(
 
       return res.status(201).json(savedJudgement);
     } catch (err) {
-      console.error('Save judgment error:', err.message);
-      return res.status(500).json({ message: 'Failed to save judgment' });
+      next(err);
     }
   }
 );

@@ -511,3 +511,73 @@ Notification Hub, and Automated Hearing Reminder Cron are all live and integrate
 - Confirm JWT token is returned and Redux auth state is populated correctly.
 - If login still fails after this fix, check browser Network tab for the exact
   request URL and response body — report findings for next diagnostic pass.
+
+---
+
+## 2026-06-10 — Backend Error Handling Refactor
+**Status:** ✅ Complete
+
+### Problem Resolved:
+All major controllers and route files were bypassing the centralized Express
+error handler (`server/middleware/errorHandler.js`) by manually returning
+`res.status(500).json(...)` in catch blocks. This swallowed errors silently
+and prevented proper server-side logging.
+
+### Files Modified:
+- `server/controllers/adminController.js` — `createLawyer`, `getLawyers`, `getClients`: replaced `res.status(500)` with `next(err)`
+- `server/controllers/authController.js` — `register`, `login`, `refresh`: replaced `res.status(500)` with `next(err)`; `logout`: wrapped in `try/catch`
+- `server/controllers/documentController.js` — `uploadDocument`: replaced `res.status(500)` with `next(error)`
+- `server/routes/ai.routes.js` — `/analyze`, `/analyses/:caseId`, `/chat`: all handlers use `next(error)` (SSE guard: if headers already sent, write SSE error frame)
+- `server/routes/notification.routes.js` — `GET /`, `PATCH /:id/read`: replaced `res.status(500)` with `next(err)`
+- `server/routes/search.routes.js` — `POST /save`: replaced `res.status(500)` with `next(err)`
+
+### Architecture Rule Locked:
+All async Express handlers MUST accept `(req, res, next)` and propagate errors
+via `next(err)` — never via manual `res.status(500)`.
+
+---
+
+## 2026-06-10 — Environment & Startup Fix
+**Status:** ✅ Complete
+
+### Problems Resolved:
+1. **Vite `@` alias not configured** — `@/components/ui/*` imports failed at startup.
+2. **Missing .env keys** — `CLOUDINARY_*`, `ANTHROPIC_API_KEY`, `EMAIL_*` were empty; startup guard exited process.
+3. **Empty database** — MongoDB had zero users; login always returned 401.
+
+### Files Modified:
+- `client/vite.config.js` — Added `resolve.alias` for `@` → `./src`. Added `import path` and `fileURLToPath` for ESM-compatible `__dirname`.
+- `server/.env` — Populated all missing keys with placeholder dummy values.
+
+### Commands Run:
+- `npm run seed` — seeded default dev accounts.
+- `node scripts/seedFirm.js` — re-seeded Insignia Law Firm roster (7 accounts, password: `Insignia@2026`).
+
+---
+
+## 2026-06-10 — Session Persistence & Case Management Fixes
+**Status:** ✅ Complete
+
+### Problems Resolved:
+1. **Reload logs out** — Redux `accessToken` lives in JS memory. On reload Redux resets to `initialState` → `ProtectedRoute` sees no token → redirect to `/login`.
+2. **"View" button logs out** — `Cases.jsx` used `window.location.href` (full page reload → Redux wiped → logout).
+3. **Create Case broken** — `CreateCaseModal` used hardcoded mock IDs; never called the API.
+4. **Interceptor cascade on reload** — `AuthLoader` called `POST /auth/refresh`. Cookie absent → 401. The Axios interceptor caught the 401 and tried to refresh AGAIN (no guard for refresh endpoint). Second refresh also failed → interceptor forced `window.location.href = '/login'`, overriding `AuthLoader`.
+
+### Files Created:
+- `client/src/components/shared/AuthLoader.jsx` — Wraps entire app. On mount calls `POST /api/auth/refresh` silently via httpOnly cookie. Shows full-screen spinner during check. On success dispatches `restoreSession({ accessToken, user })`. On failure simply unmounts spinner and lets router proceed (unauthenticated flow).
+
+### Files Modified:
+- `client/src/main.jsx` — Wrapped `<App />` with `<AuthLoader>` inside `<Provider>` + `<BrowserRouter>`.
+- `client/src/store/slices/authSlice.js` — Added `restoreSession` reducer action. Exported alongside `setAccessToken` and `clearError`.
+- `client/src/services/api.js` — Added `isRefreshEndpoint` guard to the 401 interceptor. Interceptor now skips retry + redirect when the failing request is the refresh endpoint itself.
+- `server/controllers/authController.js` — `POST /auth/refresh` now returns `user` object (`{ id, name, role, language }`) alongside `accessToken` for full Redux rehydration.
+- `client/src/pages/admin/Cases.jsx` — Replaced `window.location.href` with `useNavigate()`. Wired `onCaseCreated` callback to prepend new cases to table without reload.
+- `client/src/components/admin/CreateCaseModal.jsx` — Fully rewritten: fetches real clients from `GET /api/admin/clients` and lawyers from `GET /api/admin/lawyers` on open. Submits to `POST /api/cases`. Shows loading spinners, per-field validation, and submit error banner.
+
+### Architecture Patterns Locked:
+- All SPA navigation MUST use `useNavigate()` / `<Link>` — never `window.location.href`.
+- Boot session restoration MUST go through `AuthLoader` → `restoreSession`.
+- Axios interceptor MUST guard against retrying the refresh endpoint.
+- Modals that need server data MUST fetch from API — never use mock constants.
+
